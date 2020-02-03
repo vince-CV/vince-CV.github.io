@@ -1,6 +1,6 @@
 # Site settings
-title: Xunzhe Wen
-SEOTitle: Xunzhe Wen's Blog
+title: Xunzhe Wen Blog|文勋喆的博客
+SEOTitle: 文勋喆的博客|Xunzhe Blog|
 header-img: img/home-bg.jpg
 email: xwen258@gmail.com
 description: "About me | Xunzhe Wen, Computer Vision & Machine Learning Engineer"
@@ -14,9 +14,9 @@ future: true
 # SNS settings
 RSS: false
 linkedin_username:  xwen
-weibo_username:    /u/2443804975
+weibo_username:     /u/2443804975
 github_username:    vince-CV
-#github_username:    vince-xunzhe
+zhihu_username:     vince-65-60
 #facebook_username:  huxpro
 #linkedin_username:  firstname-lastname-idxxxx
 
@@ -78,7 +78,7 @@ ga_domain: auto
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "苟利国家生死以，岂因祸福避趋之<br>"
+sidebar-about-description: "A Computer Vision & Machine Learning Engineer. <br> 学习一些子技能，记录一点点想法， 提出一揽子计划. <br> Wechat|微信： vince_primer"
 sidebar-avatar: /img/avatar-hux-ny.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
@@ -103,7 +103,7 @@ page-mathjax: false
 # Friends
 #friends: [
     #{
-    #   title: "尹峰以为",
-    #    href: "http://ingf.github.io/"
+    #   title: "hello",
+    #    href: "http://anyone.github.io/"
     #}
 #]
