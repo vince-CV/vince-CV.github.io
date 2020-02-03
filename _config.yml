@@ -1,11 +1,11 @@
 # Site settings
 title: Xunzhe Wen
-SEOTitle: 文勋喆的博客 | Xunzhe Wen's Blog
+SEOTitle: Xunzhe Wen's Blog
 header-img: img/home-bg.jpg
 email: xwen258@gmail.com
 description: "About me | Xunzhe Wen, Computer Vision & Machine Learning Engineer"
 keyword: "Xunzhe Wen, Blog, computer vision, machine learning, data"
-url: "https://vince-CV.github,io"              # your host, for absolute URL
+url: "https://vince-CV.github.io"              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 # Publish posts or collection documents with a future date.
@@ -78,7 +78,7 @@ netease_comment: false
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "For the next quantum leap<br>vince.io "
+sidebar-about-description: "for vince.io<br>"
 sidebar-avatar: /img/avatar-hux-ny.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
