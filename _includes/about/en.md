@@ -1,4 +1,4 @@
-> Your time is limited, so don’t waste it living someone else’s life. 
+> Never stop learning, never stop enjoying 
 
 Hi, I am Xunzhe Wen, a computer vision engineer. My interests range from machine learning in general to indurstial AI algorithm. 
 
