@@ -25,7 +25,7 @@ Aggregating是指聚集. <br>
 * (A) 从原始样本集中抽取训练集。每轮从原始样本集中使用Bootstraping的方法抽取n个训练样本（在训练集中，有些样本可能被多次抽取到，而有些样本可能一次都没有被抽中）。共进行k轮抽取，得到k个训练集。（k个训练集之间是相互独立的.<br>
 * (B) 每次使用一个训练集得到一个模型，k个训练集共得到k个模型。（注：这里并没有具体的分类算法或回归方法，可以根据具体问题采用不同的分类或回归方法，如决策树、感知器等）<br>
 * (C) 对分类问题：将上步得到的k个模型采用投票的方式得到分类结果；对回归问题，计算上述模型的均值作为最后的结果。（所有模型的重要性相同）<br>
-![Image1](/img/in-post/200203 Bagging&Boosting/Picture1.png)
+![Image](/img/in-post/200203 Bagging&Boosting/Picture1.png)
 注：Bagging是一种方法，其中的单个模型不一定是决策树，可以是别的分类器.<br>
 
 
@@ -40,7 +40,7 @@ Boosting是增强、强化的意思，是指**对多个学习器依次进行学�
     通过加法模型将弱分类器进行线性组合，比如AdaBoost通过加权多数表决的方式，即增大错误率小的分类器的权值，同时减小错误率较大的分类器的权值。<br>
     而boosting树通过拟合残差的方式逐步减小残差，将每一步生成的模型叠加得到最终模型。<br>
     boosting在选择hyperspace的时候给样本加了一个权值，使得loss function尽量考虑那些分错类的样本. boosting重采样的不是样本，而是样本的分布，对于分类正确的样本权值低，分类错误的样本权值高（通常是边界附近的样本），最后的分类器是很多弱分类器的线性叠加（加权组合），分类器相当简单。<br>
-![Image1](/img/in-post/200203 Bagging&Boosting/Picture2.png)
+![Image](/img/in-post/200203 Bagging&Boosting/Picture2.png)
 注：Boosting 是一种思想，具体方法可是是AdaBoosting, GDBT, 这些方法主要解决如何从前一个模型到下一个模型的问题。<br>
 
 ### Bagging 和Boosting对比
