@@ -1,7 +1,9 @@
 > We’re going to make it happen. As God is my bloody witness, I’m hell-bent on making it work.
 
 Hi，我是Xunzhe Wen 文勋喆，一个计算机视觉/机器学习的热爱者，分别于中南大学（中国长沙），和渥太华大学（加拿大渥太华）获得本科与研究生学位。目前在位于加拿大安大略省的一家创业公司任职计算机视觉工程师（Computer Vision Engineer）。<br>
+
 我在工作中负责公司视觉软件的开发，包括目标检测，图像分类，图像配准（刚性与非刚性），数据分析建模等等，并将软件部署到IOS， Android平台。我自己的兴趣也是能学习和实现很多炫酷的机器学习算法，特别是计算机视觉方向，来解决有意思的问题。<br>
+
 视觉是人类感官中最直接地接受外界刺激，而与计算机视觉有关的应用的确是很有意思的。<br>
 
 
