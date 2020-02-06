@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "MobileNet"
-subtitle:   " \"A light CNN architecture\""
+subtitle:   " \"A lite CNN architecture\""
 date:       2020-02-05 22:00:00
 author:     "vince"
 header-img: "img/home-bg.jpg"
