@@ -78,7 +78,7 @@ ga_domain: auto
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "A Computer Vision & Machine Learning Engineer. <br> 九零后悟空Quant <br> 微信 | Wechat： vince_primer"
+sidebar-about-description: "九零后悟空. <br> 微信 | Wechat： vince_primer"
 sidebar-avatar: /img/vince.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 

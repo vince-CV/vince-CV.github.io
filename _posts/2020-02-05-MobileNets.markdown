@@ -14,26 +14,28 @@ tags:
 
 ## MobileNet
 
-MobileNet is designed for CNN deployment in embedded devices, such as MCU, Mobile phone. It has proven faster speed on inference with little accuracy drop. (compared with other nets such as ResNet, VGG...).<br>
-I have had used VGG16 for a image classification task before and deployed on IOS, but hardly reach any real-time demands (512Mb in model size and ~1s inference time).<br>
+MobileNet is designed for CNN deployment in embedded devices, such as MCU, Mobile phone. It has proven faster speed on inference with little accuracy drop. (compared with other nets such as ResNet, VGG...)<br>
+
+I have had used VGG16 for a image classification task before and deployed on IOS, but hardly reach any real-time demands (512Mb in model size and ~1s inference time)<br>
+
 Scientists have been working on optimization/efficiency on CNN, lots of idea ranging from nets-structure(prone) to hardware acceleration...  <br>
 
-MobileNet's motivations:
+**MobileNet's motivations**:
 1.	Limitation on computing resources especially embedded devices;<br>
 2.  State-of-the-art networks have huge redundancy beacause of sparse connection (ResNet ~ 70% Redundancy); <br>
 2.	Before MobileNets, using Hash, Hoffman encode to train a lite model. <br>
 
 ### MobileNet V1：
-Structure features:<br>
+**Structure features**:
 1.	Separable convolution [Depthwise+Pointwise]; (深度可分离卷积)<br>
 2.  28 Layer (BatchNorm + ReLU after each layer). <br>
 3.	Global hyper parameters; <br>
     * (1) width multiplier: α (Thinner model)
-        * i.    $α=1$, Regular MobileNet
-        * ii.   $α<1$, computation/parameters->$α^2$
+        * i.    α=1, Regular MobileNet
+        * ii.   α<1, computation/parameters -> α^2
     * (2) resolution multiplier: ρ (reduce representation)
-        * i.	$ρ=1$, Regular MobileNet
-        * ii.	$ρ<1$, computation/parameters->$ρ^2$<br>
+        * i.	ρ=1, Regular MobileNet
+        * ii.	ρ<1, computation/parameters -> ρ^2
     Note：(1)(2)may drop the performance, so needs to consider the trade-off between accuracy & model size;
 
 ![Image](/img/in-post/200205 MobileNet/Picture1.png)
@@ -42,7 +44,7 @@ MobileNet V1 single path network, no feature re-use. (It's important to address 
 
 
 ### MobileNet V2:
-MobileNet v2's motivations:<br>
+**MobileNet v2's motivations**:<br>
 1.	**Data collapse**：(数据坍塌)
     * ReLU results in low-dimentional data collapse, so highly recommanded not use ReLU after feature map if channel is few;
     * Solution: Linear Bottleneck. (non-linear activate func make data loss, so not use ReLU in Bottleneck layers)
@@ -50,16 +52,16 @@ MobileNet v2's motivations:<br>
     * If a node's weight get updated to 0, this node cannot be updated further; (Derivatives of ReLU) 
     * Solution: Apply **skip learning** in Thinner bottleneck layers. (Feature-reuse, proven ResNet outperformed VGG)
 
-Structure features：
+**Structure features**：
 1.	Separable convolution; (same as v1)
 2.  Feature-reuse + Linear bottleneck(NO ReLU in feature map)
 3.	Inverted residual block：Feature map -> pointwise conv (increase dimension) -> ReLU (feature protection)<br>
 ![Image](/img/in-post/200205 MobileNet/Picture3.png)
 
-Residual Module vs Inverted Residual Module:<br>
+**Residual Module vs Inverted Residual Module**:<br>
 * Apply skip leaning on board layers before bottleneck.
 * Directly skip learning connected on bottleneck. 
-![Image](/img/in-post/200205 MobileNet/Picture2.png)
+![Image](/img/in-post/200205 MobileNet/Picture2.png)<br>
  
  
 ### MobileNet V1, MobileNet V2, ResNet：
