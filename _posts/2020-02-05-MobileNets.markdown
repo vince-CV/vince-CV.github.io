@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "MobileNet"
-subtitle:   " \"A lite CNN architecture\""
+subtitle:   " \"A lite CNN model\""
 date:       2020-02-05 22:00:00
 author:     "vince"
 header-img: "img/home-bg.jpg"
@@ -35,8 +35,8 @@ Scientists have been working on optimization/efficiency on CNN, lots of idea ran
         * ii.   α<1, computation/parameters -> α^2
     * (2) resolution multiplier: ρ (reduce representation)
         * i.	ρ=1, Regular MobileNet
-        * ii.	ρ<1, computation/parameters -> ρ^2
-    Note：(1)(2)may drop the performance, so needs to consider the trade-off between accuracy & model size;
+        * ii.	ρ<1, computation/parameters -> ρ^2<br>
+    **Note**：(1)(2)may drop the performance, so needs to consider the trade-off between accuracy & model size;
 
 ![Image](/img/in-post/200205 MobileNet/Picture1.png)
 
@@ -54,7 +54,7 @@ MobileNet V1 single path network, no feature re-use. (It's important to address 
 
 **Structure features**：
 1.	Separable convolution; (same as v1)
-2.  Feature-reuse + Linear bottleneck(NO ReLU in feature map)
+2.  Feature-reuse + Linear bottleneck (No ReLU in feature map)
 3.	Inverted residual block：Feature map -> pointwise conv (increase dimension) -> ReLU (feature protection)<br>
 ![Image](/img/in-post/200205 MobileNet/Picture3.png)
 
