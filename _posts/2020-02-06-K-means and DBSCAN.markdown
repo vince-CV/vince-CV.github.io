@@ -50,11 +50,11 @@ K-means algorithm are a commonly-used unsupervised learning algorithm. I am not 
 Sudo-code:<br>
 + Create and Initilize the Centroids;<br>
 + When the cluster allocation for a certain point is changed:<br>
-+   In terms of each point:<br>
-+       In terms of each centroid:<br>
-+           Compute the edulic-distance between the point and centroid;<br>
-+       Assign this point to the nearest cluster;<br>
-+   Compute the mean of the points in the cluster, and the mean will be the updated centroid.<br>
++ * In terms of each point:<br>
++   * In terms of each centroid:<br>
++       * Compute the edulic-distance between the point and centroid;<br>
++   * Assign this point to the nearest cluster;<br>
++ * Compute the mean of the points in the cluster, and the mean will be the updated centroid.<br>
 
 In this part, I chose the hyperparameter k=5. <br>
 
