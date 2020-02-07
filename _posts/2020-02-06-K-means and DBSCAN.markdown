@@ -48,13 +48,15 @@ plt.show()
 K-means algorithm are a commonly-used unsupervised learning algorithm. I am not going into specific details about the algorithm, but an example to implemented this algorithm. Some explanations are also allocated within the following codes.<br>
 
 Sudo-code:<br>
+```python
 + Create and Initilize the Centroids;<br>
 + When the cluster allocation for a certain point is changed:<br>
-+ * In terms of each point:<br>
-+   * In terms of each centroid:<br>
-+       * Compute the edulic-distance between the point and centroid;<br>
-+   * Assign this point to the nearest cluster;<br>
-+ * Compute the mean of the points in the cluster, and the mean will be the updated centroid.<br>
++   In terms of each point:<br>
++       In terms of each centroid:<br>
++           Compute the edulic-distance between the point and centroid;<br>
++       Assign this point to the nearest cluster;<br>
++   Compute the mean of the points in the cluster, and the mean will be the updated centroid.<br>
+```
 
 In this part, I chose the hyperparameter k=5. <br>
 
@@ -128,11 +130,12 @@ DBSCAN is a desity-based clustering method, which can be perfored under a noisy 
 There are two hyperparameters in this algorithm needs to be tuned. The basic idea of this algorithm can be demonstrated as:<br> 
 
 Sudo-code:<br>
+```python
 + Compute the neighbourhood to identify the core points, board points, and noise with respect to the data point density;<br>
 + According to the each core point, add or extend its neighbourhood to the same cluster, until this cluster area is not changing its size;<br>
 + Manipulate every core points until all points have been visited;<br>
 + Plot each cluster area and noise.<br>
-
+```
 The hyperparameter epsilon controls the radius of the neighbourhood for each data point; and minpts serves as the density threshold to distinguish the core points.<br>
 In this part epsilon and minpts are both chosen to be 5.<br>
 
