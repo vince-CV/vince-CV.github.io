@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "MobileNet"
-subtitle:   " \"A lite CNN model\""
+title:      "MobileNet v1 & v2"
+subtitle:   " \"A lite convolutional neural net model\""
 date:       2020-02-05 22:00:00
 author:     "vince"
 header-img: "img/home-bg.jpg"
