@@ -1,4 +1,4 @@
-> We’re going to make it happen. As God is my bloody witness, I’m hell-bent on making it work.
+> Before destination it's all about journey
 
 Hi, I am Xunzhe Wen, a computer vision engineer. My interests range from machine learning in general to indurstial AI algorithm. 
 

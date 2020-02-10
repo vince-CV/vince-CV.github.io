@@ -1,4 +1,4 @@
-> We’re going to make it happen. As God is my bloody witness, I’m hell-bent on making it work.
+> Before destination it is all about journey
 
 Hi，我是Xunzhe Wen 文勋喆，一个计算机视觉/机器学习的热爱者，分别于中南大学（中国长沙），和渥太华大学（加拿大渥太华）获得本科与研究生学位。目前在位于加拿大安大略省的一家创业公司任职计算机视觉工程师（Computer Vision Engineer）。<br>
 
