@@ -231,7 +231,7 @@ Also, the DBSCAN algorithm is a desity-based clustering method, during the imple
 
 
 ### Appendix: K-means (c++)
-```C++
+```c++
 bool flag_maker(vector<Point2f> &A, vector<Point2f> &B)
 	{
 
