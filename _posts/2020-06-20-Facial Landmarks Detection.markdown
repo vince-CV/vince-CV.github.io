@@ -17,7 +17,7 @@ This repo contains item:
 - Training a landmarks detector
 - Ficial landmarks detection;
 - Ficial landmarks applications;
-An public github repo also released: [Caption]: https://github.com/vince-CV/cv-facial-landmarks-applications
+An public github repo also released: <https://github.com/vince-CV/cv-facial-landmarks-applications>
 
 ## Theory of Facial Landmarks Detection
 Ensemble of Regression Trees: a collection of gradient tree boosting:
