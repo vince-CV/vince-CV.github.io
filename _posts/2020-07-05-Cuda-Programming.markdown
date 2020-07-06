@@ -120,6 +120,6 @@ __global__ void loop()
 ### Coordinating Parallel Threads (协调并行线程)
 Assuming data is in a 0 indexed vector. Each thread must be mapped to work on an element in the vector.<br>
 Using the formula: $ threadIdx.x + blockIdx.x \times blockDim.x $ will map each thread to one element in the vector.<br>
-![Image](/img/in-post/200705 CudaProgramming/2.png)
+![Image](/img/in-post/200705 CudaProgramming/3.png)
 
 #### Using Block Dimensions for More Parallelization
