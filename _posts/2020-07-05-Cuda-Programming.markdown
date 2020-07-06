@@ -12,9 +12,9 @@ tags:
     - C++
 ---
 
+![Image](/img/in-post/200705 CudaProgramming/logo.png)
 CUDA provides a coding paradigm that extends languages like C, C++, Python, and Fortran, to be capable of running accelerated, massively parallelized code on the performant parallel processors: NVIDIA GPUs.<br> 
 CUDA accelerates applications drastically with little effort, has an ecosystem of highly optimized libraries for DNN, BLAS, graph analytics, FFT and more.
-![Image](/img/in-post/200705 CudaProgramming/logo.png)
 
 ## Accelerating Applications with CUDA C/C++
 
