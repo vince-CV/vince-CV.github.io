@@ -14,7 +14,7 @@ tags:
 
 CUDA provides a coding paradigm that extends languages like C, C++, Python, and Fortran, to be capable of running accelerated, massively parallelized code on the performant parallel processors: NVIDIA GPUs.<br> 
 CUDA accelerates applications drastically with little effort, has an ecosystem of highly optimized libraries for DNN, BLAS, graph analytics, FFT and more.
-
+![Image](/img/in-post/200705 CudaProgramming/logo.png)
 
 ## Accelerating Applications with CUDA C/C++
 
@@ -32,8 +32,11 @@ Accelerated systems run CPU programs which in turn, launch functions that will b
 Using Systems Management Interface cmd to check N-GPU environment:<br>
 `!nvidia-smi`<br>
 
-GPU-accelerated vs. CPU-only Applications:
-![Image](/img/in-post/200620 FacialLandmark/Picture1.png)
+GPU-accelerated vs. CPU-only Applications:<br>
+In CPU-only applications data is allocated on CPU and all work is performed on CPU.<br>
+In accelerated applications data is allocated with `cudaMallocManaged()` where it can be accessed and worked on by the CPU and automatically migrated to the GPU where parallel work can be done.<br>
+Work on the GPU is asynchronous, and CPU can work at the same time. CPU code can sync with the asynchronous GPU work, waiting for it to complete with `cudaDeviceSynchronize()`. data accesses by the CPU will automatically be migrated.<br>
+![Image](/img/in-post/200705 CudaProgramming/1.png)
 
 
 #### Code for the GPU
@@ -81,7 +84,7 @@ The CUDA platform ships with the NVIDIA CUDA Compiler nvcc, which can compile CU
 
 ### CUDA Thread Hierarchy
 GPUs do work in parallel, and each GPU work is done in a thread. Many threads run in parallel.
-![Image](/img/in-post/200620 FacialLandmark/Picture1.png)
+![Image](/img/in-post/200705 CudaProgramming/2.png)
 As mentioned above, GPU function is called kernel and Kernels are launched with an execution configuration.
 
 #### Launching Parallel Kernels
@@ -92,8 +95,7 @@ Execution configurations: ```<<< NUMBER_OF_BLOCKS, NUMBER_OF_THREADS_PER_BLOCK>>
 ### CUDA-Provided Thread Hierarchy Variables
 Just as threads are grouped into thread blocks, blocks are grouped into a grid, which is the highest entity in the CUDA thread hierarchy. In summary, CUDA kernels are executed in a grid of 1 or more blocks, with each block containing the same number of 1 or more threads.
 
-
-### Accelerating For Loops
+#### Accelerating For Loops
 For loops in CPU-only applications are ripe for acceleration: rather than run each iteration of the loop serially, each iteration of the loop can be run in parallel in its own thread.<br>
 Consider the following for loop:<br>
 ```cpp
@@ -115,4 +117,9 @@ __global__ void loop()
 }
 ```
 
+### Coordinating Parallel Threads (协调并行线程)
+Assuming data is in a 0 indexed vector. Each thread must be mapped to work on an element in the vector.<br>
+Using the formula: $ threadIdx.x + blockIdx.x \times blockDim.x $ will map each thread to one element in the vector.<br>
+![Image](/img/in-post/200705 CudaProgramming/2.png)
 
+#### Using Block Dimensions for More Parallelization
