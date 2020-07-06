@@ -119,7 +119,8 @@ __global__ void loop()
 
 ### Coordinating Parallel Threads (协调并行线程)
 Assuming data is in a 0 indexed vector. Each thread must be mapped to work on an element in the vector.<br>
-Using the formula: $ threadIdx.x + blockIdx.x \times blockDim.x $ will map each thread to one element in the vector.<br>
+Using the formula:  **threadIdx.x + blockIdx.x * blockDim.x** will map each thread to one element in the vector.<br>
 ![Image](/img/in-post/200705 CudaProgramming/3.png)
 
 #### Using Block Dimensions for More Parallelization
+There is a limit to the number of threads that can exist in a thread block: 1024 to be precise. In order to increase the amount of parallelism in accelerated applications, we must be able to coordinate among multiple thread blocks.
