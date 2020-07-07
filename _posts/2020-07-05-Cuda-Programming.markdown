@@ -124,3 +124,150 @@ Using the formula:  **threadIdx.x + blockIdx.x * blockDim.x** will map each thre
 
 #### Using Block Dimensions for More Parallelization
 There is a limit to the number of threads that can exist in a thread block: 1024 to be precise. In order to increase the amount of parallelism in accelerated applications, we must be able to coordinate among multiple thread blocks.
+
+
+### Allocating Memory to be accessed on the GPU and the CPU
+More recent versions of CUDA (version 6 and later) have made it easy to allocate memory that is available to both the CPU host and any number of GPU devices. <br>
+More reading: [intermediate and advanced memory techniques](http://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#memory-optimizations)<br>
+To allocate and free memory, and obtain a pointer that can be referenced in both host and device code, replace calls to `malloc` and `free` with `cudaMallocManaged` and `cudaFree` as in the following example:
+
+```cpp
+// CPU-only
+int N = 2<<20;
+size_t size = N * sizeof(int);
+
+int *a;
+a = (int *)malloc(size);
+
+// Use `a` in CPU-only program.
+free(a);
+```
+
+```cpp
+// Accelerated
+int N = 2<<20;
+size_t size = N * sizeof(int);
+
+int *a;
+// Note the address of `a` is passed as first argument.
+cudaMallocManaged(&a, size);
+
+// Use `a` on the CPU and/or on any GPU in the accelerated system.
+cudaFree(a);
+```
+
+### Grid Size Work Amount Mismatch
+What if there are more threads than work to be done? Access non-existent elements can reasult in a runtime error. (Code must check that the **threadIdx.x + blockIdx.x * blockDim.x** is less that **N**, the number of data elements)
+![Image](/img/in-post/200705 CudaProgramming/4.png)
+
+#### Handling Block Configuration Mismatches to Number of Needed Threads
+An execution configuration cannot be expressed that will create the exact number of threads needed for parallelizing a loop.<br>
+This scenario can be easily addressed in the following way:
+- Write an execution configuration that creates **more** threads than necessary to perform the allotted work.
+- Pass a value as an argument into the kernel (`N`) that represents to the total size of the data set to be processed, or the total threads that are needed to complete the work.
+- After calculating the thread's index within the grid (using `tid+bid*bdim`), check that this index does not exceed `N`, and only perform the pertinent work of the kernel if it does not.
+
+Here is an example of an idiomatic way to write an execution configuration, and it ensures that there are always at least as many threads as needed for N, and only 1 additional block's worth of threads extra, at most:
+```cpp
+// Assume `N` is known
+int N = 100000;
+
+// Assume we have a desire to set `threads_per_block` exactly to `256`
+size_t threads_per_block = 256;
+
+// Ensure there are at least `N` threads in the grid, but only 1 block's worth extra
+size_t number_of_blocks = (N + threads_per_block - 1) / threads_per_block;
+
+some_kernel<<<number_of_blocks, threads_per_block>>>(N);
+```
+Becuase the execution configuration above results in more threads in the grid than `N`, care will need to be taken inside of the `some_kernel` definition so that `some_kernel` does not attempt to access out of range data elements, when being executed by one of the "extra" threads:
+
+```cpp
+__global__ some_kernel(int N)
+{
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+  if (idx < N) // Check to make sure `idx` maps to some value within `N`
+  {
+    // Only do work if it does
+  }
+}
+```
+
+### Grid-Stride Loops
+Often there are more data elemens than there are threads in the grid. In this scenarios threads cannot work on only one element or else work is left undone. One way to address this programmatically is with a grid-stride loop.
+![Image](/img/in-post/200705 CudaProgramming/5.png)
+In a grid-stride loop, each thread will calculate its unique index within the grid using tid+bid*bdim, perform its operation on the element at that index within the array, and then, add to its index the number of threads in the grid and repeat, until it is out of range of the array. <br>
+CUDA provides a special variable giving the number of blocks in a grid, `gridDim.x`. Calculating the total number of threads in a grid then is simply the number of blocks in a grid multiplied by the number of threads in each block, `gridDim.x * blockDim.x`. With this in mind, here is a verbose example of a grid-stride loop within a kernel:
+
+```cpp
+__global void kernel(int *a, int N)
+{
+  int indexWithinTheGrid = threadIdx.x + blockIdx.x * blockDim.x;
+  int gridStride = gridDim.x * blockDim.x;
+
+  for (int i = indexWithinTheGrid; i < N; i += gridStride)
+  {
+    // do work on a[i];
+  }
+}
+```
+
+
+### Error Handling
+Many, if not most CUDA functions return a value of type `cudaError_t`, which can be used to check whether or not an error occured while calling the function. Here is an example where error handling is performed for a call to `cudaMallocManaged`:
+```cpp
+cudaError_t err;
+err = cudaMallocManaged(&a, N)                    // Assume the existence of `a` and `N`.
+
+if (err != cudaSuccess)                           // `cudaSuccess` is provided by CUDA.
+{
+  printf("Error: %s\n", cudaGetErrorString(err)); // `cudaGetErrorString` is provided by CUDA.
+}
+```
+
+Launching kernels, which are defined to return `void`, do not return a value of type `cudaError_t`. To check for errors occuring at the time of a kernel launch, for example if the launch configuration is erroneous, CUDA provides the `cudaGetLastError` function, which does return a value of type `cudaError_t`.
+
+```cpp
+/*
+ * This launch should cause an error, but the kernel itself
+ * cannot return it.
+ */
+
+someKernel<<<1, -1>>>();  // -1 is not a valid number of threads.
+
+cudaError_t err;
+err = cudaGetLastError(); // `cudaGetLastError` will return the error from above.
+if (err != cudaSuccess)
+{
+  printf("Error: %s\n", cudaGetErrorString(err));
+}
+```
+
+Finally, in order to catch errors that occur asynchronously, for example during the execution of an asynchronous kernel, it is essential to check the status returned by a subsequent synchronizing cuda runtime API call, such as `cudaDeviceSynchronize`, which will return an error if one of the kernels launched previously should fail.<br>
+
+Wrapper CUDA function calls for checking errors:
+```cpp
+#include <stdio.h>
+#include <assert.h>
+
+inline cudaError_t checkCuda(cudaError_t result)
+{
+  if (result != cudaSuccess) {
+    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
+    assert(result == cudaSuccess);
+  }
+  return result;
+}
+
+int main()
+{
+
+/*
+ * The macro can be wrapped around any function returning
+ * a value of type `cudaError_t`.
+ */
+
+  checkCuda( cudaDeviceSynchronize() )
+}
+```
