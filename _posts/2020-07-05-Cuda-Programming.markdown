@@ -291,7 +291,8 @@ This project contains a functioning CPU-only vector addition application. Accele
 - Choose and utilize a working execution configuration so that `addVectorsInto` launches as a CUDA kernel.
 - Update memory allocations, and memory freeing to reflect that the 3 vectors `a`, `b`, and `result` need to be accessed by host and device code.
 - Refactor the body of `addVectorsInto`: it will be launched inside of a single thread, and only needs to do one thread's worth of work on the input vectors. Be certain the thread will never try to access elements outside the range of the input vectors, and take care to note whether or not the thread needs to do work on more than one element of the input vectors.
-- Add error handling in locations where CUDA code might otherwise silently fail.
+- Add error handling in locations where CUDA code might otherwise silently fail.<br>
+
 ```cpp
 #include <stdio.h>
 #include <assert.h>
@@ -379,6 +380,7 @@ int main()
 }
 
 ```
+<br>
 
 ### Project 2: Accelerate 2D Matrix Multiply Application
 The task is to build out the matrixMulGPU CUDA kernel.
