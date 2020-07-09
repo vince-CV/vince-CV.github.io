@@ -386,6 +386,7 @@ int main()
 The task is to build out the matrixMulGPU CUDA kernel.
 - It will need to create an execution configuration whose arguments are both `dim3` values with the `x` and `y` dimensions set to greater than `1`.
 - Inside the body of the kernel, it will need to establish the running thread's unique index within the grid per usual, but it should establish two indices for the thread: one for the x axis of the grid, and one for the y axis of the grid.<br>
+
 ```cpp
 #include <stdio.h>
 
@@ -681,6 +682,5 @@ int main()
 
   return 0;
 }
-
 
 ```
