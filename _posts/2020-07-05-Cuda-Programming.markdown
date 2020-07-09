@@ -385,7 +385,302 @@ int main()
 ### Project 2: Accelerate 2D Matrix Multiply Application
 The task is to build out the matrixMulGPU CUDA kernel.
 - It will need to create an execution configuration whose arguments are both `dim3` values with the `x` and `y` dimensions set to greater than `1`.
-- Inside the body of the kernel, it will need to establish the running thread's unique index within the grid per usual, but it should establish two indices for the thread: one for the x axis of the grid, and one for the y axis of the grid.
+- Inside the body of the kernel, it will need to establish the running thread's unique index within the grid per usual, but it should establish two indices for the thread: one for the x axis of the grid, and one for the y axis of the grid.<br>
+```cpp
+#include <stdio.h>
+
+#define N  64
+
+__global__ void matrixMulGPU( int * a, int * b, int * c )
+{
+  int val = 0;
+
+  int row = blockIdx.x * blockDim.x + threadIdx.x;
+  int col = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (row < N && col < N)    // replaced "for" loops
+  {
+    for ( int k = 0; k < N; ++k )
+    {
+      val += a[row * N + k] * b[k * N + col];
+    }
+    c[row * N + col] = val;
+  }
+  
+}
+
+/*
+ * This CPU function already works, and will run to create a solution matrix
+ * against which to verify your work building out the matrixMulGPU kernel.
+ */
+
+void matrixMulCPU( int * a, int * b, int * c )
+{
+  int val = 0;
+
+  for( int row = 0; row < N; ++row )
+  {
+    for( int col = 0; col < N; ++col )
+    {
+      val = 0;
+      for ( int k = 0; k < N; ++k )
+      {
+        val += a[row * N + k] * b[k * N + col];
+      }
+      c[row * N + col] = val;
+    }
+  }
+}
+
+int main()
+{
+  int *a, *b, *c_cpu, *c_gpu; // Allocate a solution matrix for both the CPU and the GPU operations
+
+  int size = N * N * sizeof (int); // Number of bytes of an N x N matrix
+
+  // Allocate memory
+  cudaMallocManaged (&a, size);
+  cudaMallocManaged (&b, size);
+  cudaMallocManaged (&c_cpu, size);
+  cudaMallocManaged (&c_gpu, size);
+
+  // Initialize memory; create 2D matrices
+  for( int row = 0; row < N; ++row )
+    for( int col = 0; col < N; ++col )
+    {
+      a[row*N + col] = row;
+      b[row*N + col] = col+2;
+      c_cpu[row*N + col] = 0;
+      c_gpu[row*N + col] = 0;
+    }
+
+  /*
+   * Assign `threads_per_block` and `number_of_blocks` 2D values
+   * that can be used in matrixMulGPU above.
+   */
+
+  dim3 threads_per_block (16, 16, 1); // A 16 x 16 block threads
+  dim3 number_of_blocks ((N / threads_per_block.x) + 1, (N / threads_per_block.y) + 1, 1);
+
+
+  matrixMulGPU <<< number_of_blocks, threads_per_block >>> ( a, b, c_gpu );
+
+  cudaDeviceSynchronize();
+
+  // Call the CPU version to check our work
+  matrixMulCPU( a, b, c_cpu );
+
+  // Compare the two answers to make sure they are equal
+  bool error = false;
+  for( int row = 0; row < N && !error; ++row )
+  {
+    for( int col = 0; col < N && !error; ++col )
+    {  
+        if (c_cpu[row * N + col] != c_gpu[row * N + col])
+        {
+            printf("FOUND ERROR at c[%d][%d]\n", row, col);
+            error = true;
+            break;
+        }
+    }
+  }
+  
+  if (!error)
+  {
+    printf("Success!\n");
+  }
+
+  // Free all our allocated memory
+  cudaFree(a); 
+  cudaFree(b);
+  cudaFree( c_cpu ); 
+  cudaFree( c_gpu );
+}
+
+```
 
 
 ### Project 3: Accelerate A Thermal Conductivity Application
+Convert the `step_kernel_mod` function to execute on the GPU, and modify the main function to properly allocate data for use on CPU and GPU. The `step_kernel_ref` function executes on the CPU and is used for error checking. Because this code involves floating point calculations, different processors, or even simply reording operations on the same processor, can result in slightly different results. For this reason the error checking code uses an error threshold, instead of looking for an exact match.<br>
+
+```cpp
+#include <stdio.h>
+#include <math.h>
+
+// Simple define to index into a 1D array from 2D space
+#define I2D(num, c, r) ((r)*(num)+(c))
+
+/*
+ * `step_kernel_mod` is currently a direct copy of the CPU reference solution
+ * `step_kernel_ref` below. Accelerate it to run as a CUDA kernel.
+ */
+/*
+void step_kernel_mod(int ni, int nj, float fact, float* temp_in, float* temp_out)
+{
+  int i00, im10, ip10, i0m1, i0p1;
+  float d2tdx2, d2tdy2;
+
+  // loop over all points in domain (except boundary)
+  for ( int j=1; j < nj-1; j++ ) {
+    for ( int i=1; i < ni-1; i++ ) {
+      // find indices into linear memory
+      // for central point and neighbours
+      i00 = I2D(ni, i, j);
+      im10 = I2D(ni, i-1, j);
+      ip10 = I2D(ni, i+1, j);
+      i0m1 = I2D(ni, i, j-1);
+      i0p1 = I2D(ni, i, j+1);
+
+      // evaluate derivatives
+      d2tdx2 = temp_in[im10]-2*temp_in[i00]+temp_in[ip10];
+      d2tdy2 = temp_in[i0m1]-2*temp_in[i00]+temp_in[i0p1];
+
+      // update temperatures
+      temp_out[i00] = temp_in[i00]+fact*(d2tdx2 + d2tdy2);
+    }
+  }
+}
+*/
+
+
+__global__ void step_kernel_mod(int ni, int nj, float fact, float* temp_in, float* temp_out)
+{
+  int i00, im10, ip10, i0m1, i0p1;
+  float d2tdx2, d2tdy2;
+  
+  int j = blockIdx.x * blockDim.x + threadIdx.x;
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
+
+  // loop over all points in domain (except boundary)
+  if (j > 0 && i > 0 && j < nj-1 && i < ni-1) 
+  {
+    // find indices into linear memory
+    // for central point and neighbours
+    i00 = I2D(ni, i, j);
+    im10 = I2D(ni, i-1, j);
+    ip10 = I2D(ni, i+1, j);
+    i0m1 = I2D(ni, i, j-1);
+    i0p1 = I2D(ni, i, j+1);
+
+    // evaluate derivatives
+    d2tdx2 = temp_in[im10]-2*temp_in[i00]+temp_in[ip10];
+    d2tdy2 = temp_in[i0m1]-2*temp_in[i00]+temp_in[i0p1];
+
+    // update temperatures
+    temp_out[i00] = temp_in[i00]+fact*(d2tdx2 + d2tdy2);
+  }
+}
+
+void step_kernel_ref(int ni, int nj, float fact, float* temp_in, float* temp_out)
+{
+  int i00, im10, ip10, i0m1, i0p1;
+  float d2tdx2, d2tdy2;
+
+
+  // loop over all points in domain (except boundary)
+  for ( int j=1; j < nj-1; j++ ) {
+    for ( int i=1; i < ni-1; i++ ) {
+      // find indices into linear memory
+      // for central point and neighbours
+      i00 = I2D(ni, i, j);
+      im10 = I2D(ni, i-1, j);
+      ip10 = I2D(ni, i+1, j);
+      i0m1 = I2D(ni, i, j-1);
+      i0p1 = I2D(ni, i, j+1);
+
+      // evaluate derivatives
+      d2tdx2 = temp_in[im10]-2*temp_in[i00]+temp_in[ip10];
+      d2tdy2 = temp_in[i0m1]-2*temp_in[i00]+temp_in[i0p1];
+
+      // update temperatures
+      temp_out[i00] = temp_in[i00]+fact*(d2tdx2 + d2tdy2);
+    }
+  }
+}
+
+
+
+
+int main()
+{
+  int istep;
+  int nstep = 200;       // number of time steps
+
+  // Specify our 2D dimensions
+  const int ni = 200;
+  const int nj = 100;
+  float tfac = 8.418e-5; // thermal diffusivity of silver
+
+  float *temp1_ref, *temp2_ref, *temp1, *temp2, *temp_tmp;
+
+  const int size = ni * nj * sizeof(float);
+
+  temp1_ref = (float*)malloc(size);
+  temp2_ref = (float*)malloc(size);
+  //temp1 = (float*)malloc(size);
+  //temp2 = (float*)malloc(size);
+  cudaMallocManaged(&temp1, size);
+  cudaMallocManaged(&temp2, size);
+
+  // Initialize with random data
+  for( int i = 0; i < ni*nj; ++i) {
+    temp1_ref[i] = temp2_ref[i] = temp1[i] = temp2[i] = (float)rand()/(float)(RAND_MAX/100.0f);
+  }
+
+  // Execute the CPU-only reference version
+  for (istep=0; istep < nstep; istep++) {
+    step_kernel_ref(ni, nj, tfac, temp1_ref, temp2_ref);
+
+    // swap the temperature pointers
+    temp_tmp = temp1_ref;
+    temp1_ref = temp2_ref;
+    temp2_ref= temp_tmp;
+  }
+  
+  dim3 tblocks(32, 16, 1);
+  dim3 grid((nj/tblocks.x)+1, (ni/tblocks.y)+1, 1);
+  cudaError_t ierrSync, ierrAsync;
+
+  // Execute the modified version using same data
+  //for (istep=0; istep < nstep; istep++) {
+    //step_kernel_mod(ni, nj, tfac, temp1, temp2);
+  for (istep=0; istep < nstep; istep++) 
+  {
+    step_kernel_mod<<< grid, tblocks >>>(ni, nj, tfac, temp1, temp2);
+    
+    ierrSync = cudaGetLastError();
+    ierrAsync = cudaDeviceSynchronize(); // Wait for the GPU to finish
+    if (ierrSync != cudaSuccess) 
+    { printf("Sync error: %s\n", cudaGetErrorString(ierrSync)); }
+    if (ierrAsync != cudaSuccess) 
+    { printf("Async error: %s\n", cudaGetErrorString(ierrAsync)); }
+
+
+    // swap the temperature pointers
+    temp_tmp = temp1;
+    temp1 = temp2;
+    temp2= temp_tmp;
+  }
+
+  float maxError = 0;
+  // Output should always be stored in the temp1 and temp1_ref at this point
+  for( int i = 0; i < ni*nj; ++i ) {
+    if (abs(temp1[i]-temp1_ref[i]) > maxError) { maxError = abs(temp1[i]-temp1_ref[i]); }
+  }
+
+  // Check and see if our maxError is greater than an error bound
+  if (maxError > 0.0005f)
+    printf("Problem! The Max Error of %.5f is NOT within acceptable bounds.\n", maxError);
+  else
+    printf("The Max Error of %.5f is within acceptable bounds.\n", maxError);
+
+  free( temp1_ref );
+  free( temp2_ref );
+  cudaFree( temp1 );
+  cudaFree( temp2 );
+
+  return 0;
+}
+
+
+```
