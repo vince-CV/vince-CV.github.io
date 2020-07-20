@@ -125,3 +125,28 @@ The ability to page fault and migrate memory on demand is tremendously helpful f
 There are times - for example when data needs are known prior to runtime, and large contiguous blocks of memory are required - when the overhead of page faulting and migrating data on demand incurs an overhead cost that would be better avoided.
 
 Much of the remainder of this lab will be dedicated to understanding on-demand migration, and how to identify it in the profiler's output. With this knowledge you will be able to reduce the overhead of it in scenarios when it would be beneficial.
+
+### Asynchronous Memory Prefetching
+A powerful technique to reduce the overhead of page faulting and on-demand memory migrations, both in host-to-device and device-to-host memory transfers, is called **asynchronous memory prefetching**. Using this technique allows programmers to **asynchronously migrate unified memory (UM) to any CPU or GPU device in the system, in the background, prior to its use by application code**. By doing this, GPU kernels and CPU function performance can be increased on account of reduced page fault and on-demand data migration overhead.
+
+Prefetching also tends to migrate data in larger chunks, and therefore fewer trips, than on-demand migration. This makes it an excellent fit when data access needs are known before runtime, and when data access patterns are not sparse.
+
+CUDA Makes asynchronously prefetching managed memory to either a GPU device or the CPU easy with its `cudaMemPrefetchAsync` function. Here is an example of using it to both prefetch data to the currently active GPU device, and then, to the CPU:
+
+```cpp
+int deviceId;
+cudaGetDevice(&deviceId);                                         // The ID of the currently active GPU device.
+
+cudaMemPrefetchAsync(pointerToSomeUMData, size, deviceId);        // Prefetch to GPU device.
+cudaMemPrefetchAsync(pointerToSomeUMData, size, cudaCpuDeviceId); // Prefetch to host. `cudaCpuDeviceId` is a
+                                                                  // built-in CUDA variable.
+```
+
+### Summary
+At this point in th e lab, you are able to:
+
+- Use the Nsight Systems command line tool (**nsys**) to profile accelerated application performance.
+- Leverage an understanding of **Streaming Multiprocessors** to optimize execution configurations.
+- Understand the behavior of **Unified Memory** with regard to page faulting and data migrations.
+- Use **asynchronous memory prefetching** to reduce page faults and data migrations for increased performance.
+- Employ an iterative development cycle to rapidly accelerate and deploy applications.
