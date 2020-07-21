@@ -150,3 +150,88 @@ At this point in th e lab, you are able to:
 - Understand the behavior of **Unified Memory** with regard to page faulting and data migrations.
 - Use **asynchronous memory prefetching** to reduce page faults and data migrations for increased performance.
 - Employ an iterative development cycle to rapidly accelerate and deploy applications.
+
+
+### Project: Iteratively Optimize an Accelerated SAXPY Application
+A basic accelerated [SAXPY](https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms#Level_1) application has been provided.
+
+After fixing the bugs and profiling the application, record the runtime of the `saxpy` kernel and then work *iteratively* to optimize the application, using `nsys profile` after each iteration to notice the effects of the code changes on kernel performance and UM behavior.
+
+The end goal is to profile an accurate `saxpy` kernel, without modifying `N`, to run in under *100us*. Check out [the solution](../edit/09-saxpy/solutions/02-saxpy-solution.cu) if you get stuck, and feel free to compile and profile it if you wish.
+
+```cpp
+#include <stdio.h>
+
+#define N 2048 * 2048 // Number of elements in each vector
+
+/*
+ * Optimize this already-accelerated codebase. Work iteratively,
+ * and use nsys to support your work.
+ *
+ * Aim to profile `saxpy` (without modifying `N`) running under
+ * 20us.
+ *
+ * Some bugs have been placed in this codebase for your edification.
+ */
+
+__global__ void saxpy(int * a, int * b, int * c)
+{
+    // Determine our unique global thread ID, so we know which element to process
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for (int i = tid; i < N; i += stride)
+  {
+      c[i] = 2 * a[i] + b[i];
+  }
+    
+}
+
+int main()
+{
+    int *a, *b, *c;
+
+    int size = N * sizeof (int); // The total number of bytes per vector
+    
+    int deviceId;
+    int numberOfSMs;
+
+    cudaGetDevice(&deviceId);
+    cudaDeviceGetAttribute(&numberOfSMs, cudaDevAttrMultiProcessorCount, deviceId);
+
+    cudaMallocManaged(&a, size);
+    cudaMallocManaged(&b, size);
+    cudaMallocManaged(&c, size);
+
+    // Initialize memory
+    for( int i = 0; i < N; ++i )
+    {
+        a[i] = 2;
+        b[i] = 1;
+        c[i] = 0;
+    }
+    
+    cudaMemPrefetchAsync(a, size, deviceId);
+    cudaMemPrefetchAsync(b, size, deviceId);
+    cudaMemPrefetchAsync(c, size, deviceId);
+
+    int threads_per_block = 256;               // 128
+    int number_of_blocks = numberOfSMs * 32;   //(N / threads_per_block) + 1;
+
+    saxpy <<< number_of_blocks, threads_per_block >>> ( a, b, c );
+    
+    cudaDeviceSynchronize(); // Wait for the GPU to finish
+
+    // Print out the first and last 5 values of c for a quality check
+    for( int i = 0; i < 5; ++i )
+        printf("c[%d] = %d, ", i, c[i]);
+    printf ("\n");
+    for( int i = N-5; i < N; ++i )
+        printf("c[%d] = %d, ", i, c[i]);
+    printf ("\n");
+
+    cudaFree( a ); cudaFree( b ); cudaFree( c );
+}
+
+
+```
