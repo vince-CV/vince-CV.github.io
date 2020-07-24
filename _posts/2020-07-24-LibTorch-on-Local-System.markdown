@@ -14,15 +14,15 @@ tags:
 
 ## LibTorch Installation
 
-### Step 1: Download libtorch.zip file
+#### Step 1: Download libtorch.zip file
 Download libtorch zip file (debug or release) from pytorch.org and select the stable version specific to your OS. If have a GPU, select CUDA version.
 
-### Step 2: Download Sample Code
+#### Step 2: Download Sample Code
 Download sample code from this link. Unzip it and keep the folder at the same place as libtorch. For example the directory structure should look as follows:
 - C:\LibTorch\libtorch
 - C:\LibTorch\libtorch-sample-code
 
-### Step 3: Build C++ Code
+#### Step 3: Build C++ Code
 Now we have provided a CMakeLists.txt file in the sample code folder. We can use the following commands to build the C++ code (sample.cpp for example).<br>
 NOTE that we need to provide the path where we have kept the libtorch folder while running CMAKE using **CMAKE_PREFIX_PATH** flag.
 
@@ -38,11 +38,11 @@ cd ..
 
 ## Installation trouble-shooting
 
-### Error 1: Cmake CMD
+#### Error 1: Cmake CMD
 CMD Line: 'cmake' is not recognized as an internal or external command, operable program or batch file.<br>
 **Soultion**: add CMAKE bin folder to the Environment Variable Path value. (`C:\CMake 3.15.0\bin`)
 
-### Error 2: Torch Config
+#### Error 2: Torch Config
 CMake Error at CMakeLists.txt:4 (find_package):<br>
 By not providing "FindTorch.cmake" in CMAKE_MODULE_PATH this project has asked CMake to find a package configuration file provided by "Torch", but CMake did not find one.<br>
 Could not find a package configuration file provided by "Torch" with any of the following names:
