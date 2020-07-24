@@ -48,7 +48,7 @@ By not providing "FindTorch.cmake" in CMAKE_MODULE_PATH this project has asked C
 Could not find a package configuration file provided by "Torch" with any of the following names:
 - TorchConfig.cmake
 - torch-config.cmake
-![Image](/img/in-post/200724 libtorch/1.png)
+![Image](/img/in-post/200724 Libtorch/1.png)
 **Solution**: add libtorch path to Environment Variable Path value. (`C:\LibTorch\libtorch`)
 
 ### Error 3:
@@ -58,7 +58,7 @@ Call Stack (most recent call first):<br>
 - C:/LibTorch/libtorch/share/cmake/Caffe2/Caffe2Config.cmake:88 (include)
 - C:/LibTorch/libtorch/share/cmake/Torch/TorchConfig.cmake:40 (find_package)
 CMakeLists.txt:4 (find_package)
-![Image](/img/in-post/200724 libtorch/2.png)
+![Image](/img/in-post/200724 Libtorch/2.png)
 **Solution**: Configure the CMAKE flag to use x64 system for compiling.
 Change from:
 > cmake -DCMAKE_PREFIX_PATH= C:\LibTorch\libtorch ..
