@@ -38,11 +38,11 @@ cd ..
 
 ## Installation trouble-shooting
 
-### Error 1: 
+### Error 1: Cmake CMD
 CMD Line: 'cmake' is not recognized as an internal or external command, operable program or batch file.<br>
 **Soultion**: add CMAKE bin folder to the Environment Variable Path value. (`C:\CMake 3.15.0\bin`)
 
-### Error 2: 
+### Error 2: Torch Config
 CMake Error at CMakeLists.txt:4 (find_package):<br>
 By not providing "FindTorch.cmake" in CMAKE_MODULE_PATH this project has asked CMake to find a package configuration file provided by "Torch", but CMake did not find one.<br>
 Could not find a package configuration file provided by "Torch" with any of the following names:
@@ -51,7 +51,7 @@ Could not find a package configuration file provided by "Torch" with any of the 
 ![Image](/img/in-post/200724 Libtorch/1.png)
 **Solution**: add libtorch path to Environment Variable Path value. (`C:\LibTorch\libtorch`)
 
-### Error 3:
+#### Error: System
 CMake Error at C:/LibTorch/libtorch/share/cmake/Caffe2/public/cuda.cmake:325 (message):<br>
 CUDA support not available with 32-bit windows. Did you forget to set Win64 in the generator target?<br>
 Call Stack (most recent call first):<br>
