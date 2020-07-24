@@ -54,13 +54,14 @@ Could not find a package configuration file provided by "Torch" with any of the 
 #### Error: System
 CMake Error at C:/LibTorch/libtorch/share/cmake/Caffe2/public/cuda.cmake:325 (message):<br>
 CUDA support not available with 32-bit windows. Did you forget to set Win64 in the generator target?<br>
-Call Stack (most recent call first):<br>
+Call Stack (most recent call first):
 - C:/LibTorch/libtorch/share/cmake/Caffe2/Caffe2Config.cmake:88 (include)
 - C:/LibTorch/libtorch/share/cmake/Torch/TorchConfig.cmake:40 (find_package)
+
 CMakeLists.txt:4 (find_package)
 ![Image](/img/in-post/200724 Libtorch/2.png)
 **Solution**: Configure the CMAKE flag to use x64 system for compiling.
 Change from:
-> cmake -DCMAKE_PREFIX_PATH= C:\LibTorch\libtorch ..
-to:
+> cmake -DCMAKE_PREFIX_PATH= C:\LibTorch\libtorch ..<br>
+to:<br>
 > cmake -DCMAKE_PREFIX_PATH= C:\LibTorch\libtorch .. -A x64
