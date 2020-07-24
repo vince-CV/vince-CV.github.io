@@ -51,7 +51,7 @@ Could not find a package configuration file provided by "Torch" with any of the 
 ![Image](/img/in-post/200724 Libtorch/1.png)
 **Solution**: add libtorch path to Environment Variable Path value. (`C:\LibTorch\libtorch`)
 
-#### Error: System
+#### Error 3: System
 CMake Error at C:/LibTorch/libtorch/share/cmake/Caffe2/public/cuda.cmake:325 (message):<br>
 CUDA support not available with 32-bit windows. Did you forget to set Win64 in the generator target?<br>
 Call Stack (most recent call first):
