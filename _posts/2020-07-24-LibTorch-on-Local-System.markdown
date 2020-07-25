@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "LibTorch code on Local System"
+title:      "LibTorch on Local System"
 subtitle:   " \"Cmake for compiling LibTorch code\""
 date:       2020-07-24 22:00:00
 author:     "vince"
@@ -11,6 +11,9 @@ tags:
     - CMAKE
     - C++
 ---
+
+
+![Image](/img/in-post/200724 Libtorch/0.png)
 
 ## LibTorch Installation
 
