@@ -20,7 +20,7 @@ In this lab, it will be using the Nsight Systems timeline to guide in optimizing
 **Objectives**
 1. Use **Nsight Systems** to visually profile the timeline of GPU-accelerated CUDA applications.
 2. Use Nsight Systems to identify, and exploit, optimization opportunities in GPU-accelerated CUDA applications.
-3. Utilize CUDA streams for concurrent kernel execution in accelerated applications.
+3. Utilize CUDA streams for concurrent(并发) kernel execution in accelerated applications.
 4. (**Optional Advanced Content**) Use manual device memory allocation, including allocating pinned memory, in order to asynchronously transfer data in concurrent CUDA streams.
 
 ## Running Nsight Systems
@@ -233,8 +233,8 @@ For comparison:
 
 #### Launch Init in Kernel
 In the previous iteration of the vector addition application, the vector data is being initialized on the CPU, and therefore needs to be migrated to the GPU before the addVectorsInto kernel can operate on it.<br>
-Next, the application will be refactored to initialize the data in parallel on the GPU.<br>
-Since the initialization now takes place on the GPU, prefetching has been done prior to initialization, rather than prior to the vector addition work.
+Next, the application will be refactored to **initialize the data in parallel on the GPU**.<br>
+Since the **initialization now takes place on the GPU, prefetching has been done prior to initialization, rather than prior to the vector addition work**.
 ```cpp
 #include <stdio.h>
 
@@ -328,3 +328,121 @@ int main()
 }
 
 ```
+
+And its Nsys profile:
+![Image](/img/in-post/200705 CudaProgramming/14.png)
+For comparison:
+- Compare the application and `addVectorsInto` runtimes to the previous version of the application, how did they change?
+> there is `initWith` runtime occurs, but `addVectorsInto` took the same runtime as previous.
+- Which of the following does your application contain? 1. HtoD; 2. DtoH
+> Only DtoH remained.
+
+
+#### Asynchronous Prefetch Back to the Host
+Currently, the vector addition application verifies the work of the vector addition kernel on the host.
+
+```cpp
+#include <stdio.h>
+
+__global__
+void initWith(float num, float *a, int N)
+{
+
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for(int i = index; i < N; i += stride)
+  {
+    a[i] = num;
+  }
+}
+
+__global__
+void addVectorsInto(float *result, float *a, float *b, int N)
+{
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for(int i = index; i < N; i += stride)
+  {
+    result[i] = a[i] + b[i];
+  }
+}
+
+void checkElementsAre(float target, float *vector, int N)
+{
+  for(int i = 0; i < N; i++)
+  {
+    if(vector[i] != target)
+    {
+      printf("FAIL: vector[%d] - %0.0f does not equal %0.0f\n", i, vector[i], target);
+      exit(1);
+    }
+  }
+  printf("Success! All values calculated correctly.\n");
+}
+
+int main()
+{
+  int deviceId;
+  int numberOfSMs;
+
+  cudaGetDevice(&deviceId);
+  cudaDeviceGetAttribute(&numberOfSMs, cudaDevAttrMultiProcessorCount, deviceId);
+
+  const int N = 2<<24;
+  size_t size = N * sizeof(float);
+
+  float *a;
+  float *b;
+  float *c;
+
+  cudaMallocManaged(&a, size);
+  cudaMallocManaged(&b, size);
+  cudaMallocManaged(&c, size);
+
+  cudaMemPrefetchAsync(a, size, deviceId);
+  cudaMemPrefetchAsync(b, size, deviceId);
+  cudaMemPrefetchAsync(c, size, deviceId);
+
+  size_t threadsPerBlock;
+  size_t numberOfBlocks;
+
+  threadsPerBlock = 256;
+  numberOfBlocks = 32 * numberOfSMs;
+
+  cudaError_t addVectorsErr;
+  cudaError_t asyncErr;
+
+  initWith<<<numberOfBlocks, threadsPerBlock>>>(3, a, N);
+  initWith<<<numberOfBlocks, threadsPerBlock>>>(4, b, N);
+  initWith<<<numberOfBlocks, threadsPerBlock>>>(0, c, N);
+
+  addVectorsInto<<<numberOfBlocks, threadsPerBlock>>>(c, a, b, N);
+
+  addVectorsErr = cudaGetLastError();
+  if(addVectorsErr != cudaSuccess) printf("Error: %s\n", cudaGetErrorString(addVectorsErr));
+
+  asyncErr = cudaDeviceSynchronize();
+  if(asyncErr != cudaSuccess) printf("Error: %s\n", cudaGetErrorString(asyncErr));
+
+  cudaMemPrefetchAsync(c, size, cudaCpuDeviceId);  //Asynchronous Prefetch Back to the Host
+
+  checkElementsAre(7, c, N); 
+
+  cudaFree(a);
+  cudaFree(b);
+  cudaFree(c);
+}
+
+
+```
+![Image](/img/in-post/200705 CudaProgramming/15.png)
+
+
+## Concurrent CUDA Streams
+A stream is a series of instructions, and CUDA has a default stream. In any stram, including the default, an instruction in it must complete before the next can begin. <br>
+Non-default streams can also be created for kernel execution. Kernels within any single stream must execute in order. However, kernels in different, non-defaults streams, can interact concurrently.<br>
+![Image](/img/in-post/200705 CudaProgramming/16.png)
+The default stream is special: **it blocks all kernels in all other streams**.
+![Image](/img/in-post/200705 CudaProgramming/17.png)
