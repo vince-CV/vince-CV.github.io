@@ -682,7 +682,9 @@ void bodyForce(Body *p, float dt, int n)
       float invDist = rsqrtf(distSqr);
       float invDist3 = invDist * invDist * invDist;
  
-      Fx += dx * invDist3; Fy += dy * invDist3; Fz += dz * invDist3;
+      Fx += dx * invDist3; 
+      Fy += dy * invDist3; 
+      Fz += dz * invDist3; 
     }
  
     p[i].vx += dt*Fx; 
@@ -697,6 +699,7 @@ void add(Body*p, float dt,int n)
 {
   int index = threadIdx.x + blockIdx.x * blockDim.x;
   int stride = blockDim.x * gridDim.x;
+
   for (int i = index; i < n; i += stride) 
   {
     p[i].x += p[i].vx*dt;
@@ -714,24 +717,23 @@ int main(const int argc, const char** argv) {
  
   // Do not change the value for `nBodies` here. If you would like to modify it, pass values into the command line.
   
- 
   int nBodies = 2<<11;
   int salt = 0;
   if (argc > 1) nBodies = 2<<atoi(argv[1]);
 
   // This salt is for assessment reasons. Tampering with it will result in automatic failure.
- 
+
   if (argc > 2) salt = atoi(argv[2]);
- 
+
   const float dt = 0.01f; // time step
   const int nIters = 10;  // simulation iterations
- 
+
   int bytes = nBodies * sizeof(Body);
   float *buf;
- 
+
   cudaMallocManaged(&buf, bytes);
   //cudaMemPrefetchAsync(buf, bytes, deviceId);
- 
+
   Body *p = (Body*)buf;
 
   // As a constraint of this exercise, `randomizeBodies` must remain a host function.
