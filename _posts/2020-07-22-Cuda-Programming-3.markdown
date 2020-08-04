@@ -448,13 +448,13 @@ The default stream is special: **it blocks all kernels in all other streams**.
 ![Image](/img/in-post/200705 CudaProgramming/17.png)
 CUDA programmers can create and utilize non-default CUDA streams in addition to the default stream, and in doing so, perform multiple operations, such as executing multiple kernels, concurrently, in different streams.
 
-### Rules Governing the Behavior of CUDA Streams
+#### Rules Governing the Behavior of CUDA Streams
 There are a few rules, concerning the behavior of CUDA streams, that should be learned in order to utilize them effectively:
 - Operations within a given stream occur in order.
 - Operations in different non-default streams are not guaranteed to operate in any specific order relative to each other.
 - The default stream is blocking and will both wait for all other streams to complete before running, and, will block other streams from running until it completes.
 
-### Creating, Utilizing, and Destroying Non-Default CUDA Streams
+#### Creating, Utilizing, and Destroying Non-Default CUDA Streams
 The following code snippet demonstrates how to create, utilize, and destroy a non-default CUDA stream. To launch a CUDA kernel in a non-default CUDA stream, the stream must be passed as the optional 4th argument of the execution configuration. Up until now we have only utilized the first 2 arguments of the execution configuration:
 
 ```cpp
@@ -488,7 +488,7 @@ int main()
 }
 ```
 
-#### Implement Concurrent CUDA Streams
+##### Implement Concurrent CUDA Streams
 Each kernel launch occurs in its own non-default stream:
 ```cpp
 #include <stdio.h>
@@ -512,7 +512,7 @@ int main()
 }
 ```
 
-#### Use Streams for Concurrent Data Initialization Kernels
+##### Use Streams for Concurrent Data Initialization Kernels
 The vector addition application you have been working with, currently launches an initialization kernel 3 times - once each for each of the 3 vectors needing initialization for the vectorAdd kernel. Refactor it to launch each of the 3 initialization kernel launches in their own non-default stream. 
 
 ```cpp
