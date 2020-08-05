@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "LibTorch on Local System"
+title:      "Object Detection Studies"
 subtitle:   " \"Object Detection Notebooks\""
 date:       2020-07-24 22:00:00
 author:     "vince"
