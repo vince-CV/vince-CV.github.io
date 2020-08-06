@@ -36,7 +36,7 @@ tags:
 2. Refine module: Classify and redefines bounding box; (trainable module that uses the visual feature to refine the module).
 
 | Model        | Paper  | code  |
-| :----------- | :----: | ----: |
+| :----------- | :----: | :----: |
 | R-CNN        | [<a href="https://arxiv.org/abs/1311.2524">paper</a>]  | [<a href="https://github.com/rbgirshick/rcnn">code</a>] |
 | Fast R-CNN   | [<a href="https://arxiv.org/abs/1504.08083">paper</a>] | [<a href="https://github.com/rbgirshick/fast-rcnn">code</a>] |
 | Faster R-CNN | [<a href="https://arxiv.org/abs/1506.01497">paper</a>] | [<a href="https://github.com/rbgirshick/py-faster-rcnn">code</a>] |
@@ -113,6 +113,80 @@ More efficient, and can be trained in a single step in an end-to-end manner. But
 
 Recall:
 ![Image](/img/in-post/200806 ObjectDetection/d.png)
+
+
+
+## **One Stage Object Detection**:
+
+| Model        | Paper  | code  |
+| :----------- | :----: | :----: |
+| R-CNN        | [<a href="https://arxiv.org/abs/1311.2524">paper</a>]  | [<a href="https://github.com/rbgirshick/rcnn">code</a>] |
+| Fast R-CNN   | [<a href="https://arxiv.org/abs/1504.08083">paper</a>] | [<a href="https://github.com/rbgirshick/fast-rcnn">code</a>] |
+| Faster R-CNN | [<a href="https://arxiv.org/abs/1506.01497">paper</a>] | [<a href="https://github.com/rbgirshick/py-faster-rcnn">code</a>] |
+| Mask R-CNN   | [<a href="https://arxiv.org/abs/1703.06870">paper</a>] | [<a href="https://github.com/CharlesShang/FastMaskRCNN">code</a>] |
+
+#### SSD
+<https://arxiv.org/pdf/1512.02325.pdf>
+
+#### YOLO
+<https://arxiv.org/abs/1506.02640>
+Does not have Proposal Generator and Refine Stages, but directly predicts Bounding Box through Single Stage Network using features from the entire image and predicts Bounding Box of all classes simultaneously.
+
+Each frame of live footage is inputted directly into the algorithm at a rate of 60fps.<br>
+The YOLO framework applies a convolution layer to the frame, reducing its size to a 13x13 matrix.<br>
+Each cell in the matrix predicts 5 bounding boxes, each associated with one of the 9000 classes.<br>
+Binding boxes with a confidence score of >30% are shown to the user with their respective class label.<br>
+
+YOLO Training:
+1. Cells contain the center if the ground truth bounding box is responsible for detecting it.
+- Adjust the cell's label to "car";
+- Find the predicted bounding box:
+    1. Increase confidence of bouning box with largest overlap with GT;
+    2. Decrease confidence of bouning box with smaller overlap.
+2. Cells do not contain an object:
+    1. Reduce confidence of bounding boxes;
+    2. Do not change class probabilities or bounding box coordinates.
+
+YOLO Loss:
+1. Localization error; (Original centers & Width & Height) (If an object is present, minimize loss function only when there is an object presenting in the bounding box).
+2. Confidence of the bounding box;
+3. Confidence of the bounding box at empty cells;
+4. Conditional probability of final class.
+weight localization error differently than classification error.
+
+YOLO pros and cons: 
+1. much faster than Faster R-CNN, and v3 reached very good accuracy;
+2. Hard to detect groups of small objects (limited number of boxes);
+3. Hard to handle multi-scale objects (limited scale of output feature map).
+
+#### YOLOv3 on Darknet and OpenCV
+1. Initialize the parameters:
+    (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.
+    (b). Non-maximum suppression threshold. The rest of the boxes undergo non-maximum suppression which removes redundant overlapping bounding boxes.
+    (c). Input Width & Height. 416 for default, but can also change both of them to 320 to get faster results or to 608 to get more accurate results.
+2. Load model and classes:
+    (a). **coco.names** contains all the objects for which teh model was trained;
+    (b). **yolov3.weights** pre-trained weights;
+    (c). **yolov3.cfg** configuration file.
+    OpenCV DNN module set to use CPU by default, but we can set `cv.dnn.DNN_TARGET_OPENCL` for Intel GPU.
+3. Process each frame:
+    (a). Getting the names of output layers: 
+    The forward function in OpenCV’s Net class needs the ending layer till which it should run in the network. Since we want to run through the whole network, we need to identify the last layer of the network by using `getUnconnectedOutLayers()` that gives the names of the unconnected output layers, which are essentially the last layers of the network. Then we run the forward pass of the network to get output from the output layers, as in the previous code snippet`(net.forward(getOutputsNames(net)))`.
+    (b). Draw the predicted boxes;
+    (c). Post-processing the network's output:
+    The network outputs bounding boxes are each represented by a vector of number of classes + 5 elements. The first 4 elements represent the **center_x**, **center_y**, **width** and **height**. The fifth element represents the confidence that the bounding box encloses an object.
+4. Main loop:
+      **blobFromImage** function scales the image pixel values to a target range of 0 to 1 using a scale factor of 1/255. It also resizes the image to the given size of (416, 416) without cropping. Keeping the swapRB parameter to its default value of 1.
+
+
+
+### Train a custom Object Detector using YOLO
+Generate file form:
+
+PASCAL VOC: .xml (Top left, bottom right points);
+YOLO: .txt (class_id, x, y, w, h) ratio form.
+
+
 
 
 Many thansk for @weng2017detection3's blog: "http://lilianweng.github.io/lil-log/2017/12/31/object-recognition-for-dummies-part-3.html"
