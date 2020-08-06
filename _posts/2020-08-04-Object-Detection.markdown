@@ -8,7 +8,7 @@ header-img: "img/home-bg.jpg"
 catalog: true
 tags:
     - Object Detection
-    - Computer Vision
+    - Computer Vision 
 ---
 
 **Object Detection Challenges**:
