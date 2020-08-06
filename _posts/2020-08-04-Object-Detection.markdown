@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Object Detection Studies"
+title:      "Object Detection Studies (I)"
 subtitle:   " \"Object Detection Notebooks\""
 date:       2020-08-06 22:00:00
 author:     "vince"
