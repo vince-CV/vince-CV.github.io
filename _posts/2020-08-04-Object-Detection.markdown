@@ -228,9 +228,6 @@ Interestingly, focal loss does not help YOLOv3, potentially it might be due to t
 
 
 
-
-
-
 #### YOLO v3 on Darknet and OpenCV
 1. Initialize the parameters:
     (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.
