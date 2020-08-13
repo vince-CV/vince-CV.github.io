@@ -243,6 +243,12 @@ The featurized pyramid is constructed on top of the ResNet architecture. Recall 
 ![Image](/img/in-post/200806 ObjectDetection/18.png)
 As usual, for each anchor box, the model outputs a class probability for each of K classes in the classification subnet and regresses the offset from this anchor box to the nearest ground truth object in the box regression subnet. The classification subnet adopts the focal loss introduced above.
 
+
+
+
+
+
+
 #### YOLO v3 on Darknet and OpenCV
 1. Initialize the parameters:
     (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.
