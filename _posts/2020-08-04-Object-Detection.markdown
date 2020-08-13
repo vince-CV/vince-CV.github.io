@@ -118,13 +118,13 @@ Recall:
 
 ## **One Stage Object Detection**:
 
-| Model        | Paper  | code  |
-| :----------- | :----: | :----: |
-| SSD          | [<a href="https://arxiv.org/pdf/1512.02325.pdf">paper</a>]  |   |
-| YOLO v1      | [<a href="https://arxiv.org/abs/1506.02640">paper</a>] |  |
-| YOLO v2/9000 | [<a href="https://arxiv.org/abs/1612.08242">paper</a>] |  |
-| YOLO V3   | [<a href="">paper</a>] |  |
-| YOLO V3   | [<a href="">paper</a>] |  |
+| Model        | Paper  | 
+| :----------- | :----: | 
+| SSD          | [<a href="https://arxiv.org/pdf/1512.02325.pdf">paper</a>] |  
+| YOLO v1      | [<a href="https://arxiv.org/abs/1506.02640">paper</a>] |  
+| YOLO v2/9000 | [<a href="https://arxiv.org/abs/1612.08242">paper</a>] |  
+| YOLO V3      | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] |  
+| RetinaNet    | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] |  
 
 #### SSD
 
@@ -224,9 +224,24 @@ Interestingly, focal loss does not help YOLOv3, potentially it might be due to t
 
 
 #### RetinaNet
+The RetinaNet is a one-stage dense object detector. Two crucial building blocks are **featurized image pyramid** and the use of **focal loss**.
 
+**Focal loss**:
+One of the bottlenecks of object detection is an extreme imbalance between background that contains no object and foreground that holds objects of interests. Focal loss is designed to assign more weights on hard, easily misclassified examples (i.e. background with noisy texture or partial object) and to down-weight easy examples (i.e. obviously empty background).
 
+**Featurized Image Pyramid**:
+The featurized image pyramid (Lin et al., 2017) is the backbone network for RetinaNet. Following the same approach by image pyramid in SSD, featurized image pyramids provide a basic vision component for object detection at different scales.
+![Image](/img/in-post/200806 ObjectDetection/17.png)
+- Bottom-up pathway is the normal feedforward computation.
+- Top-down pathway goes in the inverse direction, adding coarse but semantically stronger feature maps back into the previous pyramid levels of a larger size via lateral connections.
+    - First, the higher-level features are upsampled spatially coarser to be 2x larger. For image upscaling, the paper used nearest neighbor upsampling. While there are many image upscaling algorithms such as using deconv, adopting another image scaling method might or might not improve the performance of RetinaNet.
+    - The larger feature map undergoes a 1x1 conv layer to reduce the channel dimension.
+    - Finally, these two feature maps are merged by element-wise addition.
 
+**Model Architecture**:
+The featurized pyramid is constructed on top of the ResNet architecture. Recall that ResNet has 5 conv blocks (= network stages / pyramid levels).
+![Image](/img/in-post/200806 ObjectDetection/18.png)
+As usual, for each anchor box, the model outputs a class probability for each of K classes in the classification subnet and regresses the offset from this anchor box to the nearest ground truth object in the box regression subnet. The classification subnet adopts the focal loss introduced above.
 
 #### YOLO v3 on Darknet and OpenCV
 1. Initialize the parameters:
