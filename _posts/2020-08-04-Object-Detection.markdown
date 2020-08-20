@@ -1,8 +1,8 @@
 ---
 layout:     post
 title:      "Fundamentals of Object Detection Reviews"
-subtitle:   " \"Basic Object Detection techniques Notebooks\""
-date:       2020-08-06 22:00:00
+subtitle:   " \"Basic Object Detection Notebooks\""
+date:       2020-08-19 22:00:00
 author:     "vince"
 header-img: "img/home-bg.jpg"
 catalog: true
@@ -251,35 +251,28 @@ As usual, for each anchor box, the model outputs a class probability for each of
 
 #### YOLO v3 on Darknet and OpenCV
 1. Initialize the parameters:
-    (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.
-    (b). Non-maximum suppression threshold. The rest of the boxes undergo non-maximum suppression which removes redundant overlapping bounding boxes.
-    (c). Input Width & Height. 416 for default, but can also change both of them to 320 to get faster results or to 608 to get more accurate results.
+    (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.<br>
+    (b). Non-maximum suppression threshold. The rest of the boxes undergo non-maximum suppression which removes redundant overlapping bounding boxes.<br>
+    (c). Input Width & Height. 416 for default, but can also change both of them to 320 to get faster results or to 608 to get more accurate results.<br>
 2. Load model and classes:
-    (a). **coco.names** contains all the objects for which teh model was trained;
-    (b). **yolov3.weights** pre-trained weights;
-    (c). **yolov3.cfg** configuration file.
+    (a). **coco.names** contains all the objects for which teh model was trained;<br>
+    (b). **yolov3.weights** pre-trained weights;<br>
+    (c). **yolov3.cfg** configuration file.<br>
     OpenCV DNN module set to use CPU by default, but we can set `cv.dnn.DNN_TARGET_OPENCL` for Intel GPU.
 3. Process each frame:
     (a). Getting the names of output layers: 
-    The forward function in OpenCV’s Net class needs the ending layer till which it should run in the network. Since we want to run through the whole network, we need to identify the last layer of the network by using `getUnconnectedOutLayers()` that gives the names of the unconnected output layers, which are essentially the last layers of the network. Then we run the forward pass of the network to get output from the output layers, as in the previous code snippet`(net.forward(getOutputsNames(net)))`.
-    (b). Draw the predicted boxes;
-    (c). Post-processing the network's output:
+    The forward function in OpenCV’s Net class needs the ending layer till which it should run in the network. Since we want to run through the whole network, we need to identify the last layer of the network by using `getUnconnectedOutLayers()` that gives the names of the unconnected output layers, which are essentially the last layers of the network. Then we run the forward pass of the network to get output from the output layers, as in the previous code snippet`(net.forward(getOutputsNames(net)))`.<br>
+    (b). Draw the predicted boxes;<br>
+    (c). Post-processing the network's output:<br>
     The network outputs bounding boxes are each represented by a vector of number of classes + 5 elements. The first 4 elements represent the **center_x**, **center_y**, **width** and **height**. The fifth element represents the confidence that the bounding box encloses an object.
 4. Main loop:
       **blobFromImage** function scales the image pixel values to a target range of 0 to 1 using a scale factor of 1/255. It also resizes the image to the given size of (416, 416) without cropping. Keeping the swapRB parameter to its default value of 1.
 
-
-
-### Train a custom Object Detector using YOLO
-Generate file form:
-
-PASCAL VOC: .xml (Top left, bottom right points);
-YOLO: .txt (class_id, x, y, w, h) ratio form.
+See github ReadMe for more step-by-step training details: <a href = "https://github.com/vince-CV/yolo-v3-object-detection">vince's github</a>
 
 
 
-
-Many thansk for @weng2017detection3's blog: "http://lilianweng.github.io/lil-log/2017/12/31/object-recognition-for-dummies-part-3.html"
+Also many thansk for @weng2017detection3's blog: "http://lilianweng.github.io/lil-log/2017/12/31/object-recognition-for-dummies-part-3.html"
 
 
 
