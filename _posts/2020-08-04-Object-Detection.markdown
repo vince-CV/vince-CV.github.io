@@ -9,6 +9,7 @@ catalog: true
 tags:
     - Object Detection
     - Computer Vision 
+    - Deep Learning
 ---
 
 **Object Detection Challenges**:
