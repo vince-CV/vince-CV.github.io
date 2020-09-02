@@ -26,6 +26,7 @@ from google.colab import drive
 drive.mount('/content/drive')
 ```
 Enter into the folder:
+
 `%cd /content/drive/My\ Drive/Mask\ Detector`
 
 
@@ -39,9 +40,13 @@ Enter into the folder:
 3. Build with cuDNN enabled.
 
 Enter into darknet folder:
+
 `%cd darknet`
+
 `!sed -i 's/OPENCV=0/OPENCV=1/' Makefile`
+
 `!sed -i 's/GPU=0/GPU=1/' Makefile`
+
 `!sed -i 's/CUDNN=0/CUDNN=1/' Makefile`
 
 `print("Building. . . It might take 2-3 minutes")`
@@ -65,8 +70,8 @@ Should modify each file accordingly. See more details in appendix.
 
 
 ### 7. Prepare weights for Convolutional backbone ###
-Yolo v3 Original File : https://pjreddie.com/media/files/darknet53.conv.74
-Yolo v4 Original File : https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights
+Yolo v3 pre-trained weights:<br> https://pjreddie.com/media/files/darknet53.conv.74
+Yolo v4 pre-trained weights:<br> https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights
 
 
 ### 8. Start Training ###
@@ -74,6 +79,7 @@ For starting training using darknet, we need to execute the following command. H
 1. path to the setup file,
 2. path to config file,
 3. path to convolutional weights file
+
 `!./darknet detector train ../configuration_v3/setup.data ../configuration_v3/train.cfg ./backup/darknet53.conv.74 -dont_show -map 2> train_log.txt`
 
 
@@ -82,10 +88,10 @@ For starting training using darknet, we need to execute the following command. H
 ![Image](/img/in-post/200830 ObjectDetectionYOLO/chart.jpg)
 
 
-### <font style="color:blue">**APPENDIX: Training Configuration**</font>
+### <font style="color:green">APPENDIX: Training Configuration**</font>
 As explained in the theory section, we will use the config file to specify the various training parameters. A gist of all the parameters is given below:
 
-#### <font style="color:blue">a. Data Setup</font>
+#### <font style="color:green">a. Data Setup</font>
 In the file **`setup.data`**(included in our code), we need to provide information about the specifications for our object detector and some relevant paths.
 
 The contents of the file are as follows:
@@ -104,7 +110,7 @@ The names field represents the path of a file which contains the names of all th
 
 Lastly, for the **`backup`** parameter, we need to give the path to an existing directory where we can store the intermediate weights files as the training progresses.
 
-#### <font style="color:blue">b. Training Config File</font>
+#### <font style="color:green">b. Training Config File</font>
 Along with the **setup.data** and **class.names** files, YOLOv3 also needs a configuration file **`train.cfg`**. It is based on the demo configuration file, yolov3-voc.cfg (comes with darknet code), which was used to train on the VOC dataset. All the important training parameters are stored in this configuration file. Let us understand what they mean and what values to set them to.
 
 #### <font style="color:green">c. Batch hyper-parameter in YOLOv3</font>
