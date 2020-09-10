@@ -124,9 +124,9 @@ Recall:
 | SSD          | [<a href="https://arxiv.org/pdf/1512.02325.pdf">paper</a>] |  
 | YOLO v1      | [<a href="https://arxiv.org/abs/1506.02640">paper</a>] |  
 | YOLO v2/9000 | [<a href="https://arxiv.org/abs/1612.08242">paper</a>] |  
-| YOLO V3      | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] |  
+| YOLO v3      | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] |  
 | RetinaNet    | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] | 
-| YOLO V4      | [<a href="https://arxiv.org/abs/2004.10934">paper</a>] |  
+| YOLO v4      | [<a href="https://arxiv.org/abs/2004.10934">paper</a>] |  
 
 #### SSD
 
@@ -272,9 +272,9 @@ e. 改进的激活函数: Swish、Mish<br>
 f. postprocess: soft NMS、DIoU NMS<br>
 
 The YOLOv4 could consists of:
-> Backbone: CSPDarkNet 53
-> Neck: SPP, PAN
-> Head: YOLO v3
+> Backbone: CSPDarkNet 53<br>
+> Neck: SPP, PAN<br>
+> Head: YOLO v3<br>
 
 #### RetinaNet
 The RetinaNet is a one-stage dense object detector. Two crucial building blocks are **featurized image pyramid** and the use of **focal loss**.
