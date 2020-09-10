@@ -125,7 +125,8 @@ Recall:
 | YOLO v1      | [<a href="https://arxiv.org/abs/1506.02640">paper</a>] |  
 | YOLO v2/9000 | [<a href="https://arxiv.org/abs/1612.08242">paper</a>] |  
 | YOLO V3      | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] |  
-| RetinaNet    | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] |  
+| RetinaNet    | [<a href="https://arxiv.org/abs/1708.02002">paper</a>] | 
+| YOLO V4      | [<a href="https://arxiv.org/abs/2004.10934">paper</a>] |  
 
 #### SSD
 
@@ -223,6 +224,57 @@ YOLO pros and cons:
 
 Interestingly, focal loss does not help YOLOv3, potentially it might be due to the usage of λ_noobj and λ_coord — they increase the loss from bounding box location predictions and decrease the loss from confidence predictions for background boxes.
 
+##### YOLO v3 on Darknet and OpenCV
+1. Initialize the parameters:<br>
+    (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.<br>
+    (b). Non-maximum suppression threshold. The rest of the boxes undergo non-maximum suppression which removes redundant overlapping bounding boxes.<br>
+    (c). Input Width & Height. 416 for default, but can also change both of them to 320 to get faster results or to 608 to get more accurate results.<br>
+2. Load model and classes:<br>
+    (a). **coco.names** contains all the objects for which teh model was trained;<br>
+    (b). **yolov3.weights** pre-trained weights;<br>
+    (c). **yolov3.cfg** configuration file.<br>
+    OpenCV DNN module set to use CPU by default, but we can set `cv.dnn.DNN_TARGET_OPENCL` for Intel GPU.
+3. Process each frame:<br>
+    (a). Getting the names of output layers: 
+    The forward function in OpenCV’s Net class needs the ending layer till which it should run in the network. Since we want to run through the whole network, we need to identify the last layer of the network by using `getUnconnectedOutLayers()` that gives the names of the unconnected output layers, which are essentially the last layers of the network. Then we run the forward pass of the network to get output from the output layers, as in the previous code snippet`(net.forward(getOutputsNames(net)))`.<br>
+    (b). Draw the predicted boxes;<br>
+    (c). Post-processing the network's output:<br>
+    The network outputs bounding boxes are each represented by a vector of number of classes + 5 elements. The first 4 elements represent the **center_x**, **center_y**, **width** and **height**. The fifth element represents the confidence that the bounding box encloses an object.
+4. Main loop:<br>
+      **blobFromImage** function scales the image pixel values to a target range of 0 to 1 using a scale factor of 1/255. It also resizes the image to the given size of (416, 416) without cropping. Keeping the swapRB parameter to its default value of 1.
+
+See github ReadMe for more step-by-step training details: <a href = "https://github.com/vince-CV/yolo-v3-object-detection">vince's github</a>
+
+
+
+#### YOLO v4
+YOLO v4 makes an object detector which can be trained on a single GPU with a smaller mini-batch size. This makes it possible to train a super fast and accurate object detector.
+To achieve this, v4 combined some features such as Weighted-Residual-Connections (WRC), Cross-Stage-Partial-connections (CSP), Cross mini-Batch Normalization (CmBN), Self-adversarial-training (SAT) and Mish-activation, Mosaic data augmentation, DropBlock regularization, and CIoU loss.
+
+The methodology of objector detection:
+![Image](/img/in-post/200806 ObjectDetection/19.png)
+
+There are no updates on the network artchitecture, but strategies to train the objector:
+
+1. **Bag of freebies**: training strategies, no extra cost but accuracy improvement on test<br>
+a. data augmentation: Geometrical Transformaion, CutOut, Grid Mask<br>
+b. regularization: DropOut, DropBlock<br>
+c. class imbalance<br>
+d. hard sample 挖掘方法<br>
+e. 损失函数的设计<br>
+
+2. **Bag of specials**: increasing test cost a little, but significantly increasing accuracy<br>
+a. 增大模型感受野: SPP、ASPP、RFB<br>
+b. attention model: Squeeze-and-Excitation (SE)<br>
+c. spatial attention module (SAM)<br>
+d. 特征集成方法: SFAM , ASFF , BiFPN<br>
+e. 改进的激活函数: Swish、Mish<br>
+f. postprocess: soft NMS、DIoU NMS<br>
+
+The YOLOv4 could consists of:
+> Backbone: CSPDarkNet 53
+> Neck: SPP, PAN
+> Head: YOLO v3
 
 #### RetinaNet
 The RetinaNet is a one-stage dense object detector. Two crucial building blocks are **featurized image pyramid** and the use of **focal loss**.
@@ -244,32 +296,6 @@ The featurized pyramid is constructed on top of the ResNet architecture. Recall 
 ![Image](/img/in-post/200806 ObjectDetection/18.png)
 As usual, for each anchor box, the model outputs a class probability for each of K classes in the classification subnet and regresses the offset from this anchor box to the nearest ground truth object in the box regression subnet. The classification subnet adopts the focal loss introduced above.
 
-
-
-
-
-
-
-#### YOLO v3 on Darknet and OpenCV
-1. Initialize the parameters:<br>
-    (a). Confidence threshold. Every predicted box is associated with a confidence score. In the first stage, all the boxes below the confidence threshold parameter are ignored for further processing.<br>
-    (b). Non-maximum suppression threshold. The rest of the boxes undergo non-maximum suppression which removes redundant overlapping bounding boxes.<br>
-    (c). Input Width & Height. 416 for default, but can also change both of them to 320 to get faster results or to 608 to get more accurate results.<br>
-2. Load model and classes:<br>
-    (a). **coco.names** contains all the objects for which teh model was trained;<br>
-    (b). **yolov3.weights** pre-trained weights;<br>
-    (c). **yolov3.cfg** configuration file.<br>
-    OpenCV DNN module set to use CPU by default, but we can set `cv.dnn.DNN_TARGET_OPENCL` for Intel GPU.
-3. Process each frame:<br>
-    (a). Getting the names of output layers: 
-    The forward function in OpenCV’s Net class needs the ending layer till which it should run in the network. Since we want to run through the whole network, we need to identify the last layer of the network by using `getUnconnectedOutLayers()` that gives the names of the unconnected output layers, which are essentially the last layers of the network. Then we run the forward pass of the network to get output from the output layers, as in the previous code snippet`(net.forward(getOutputsNames(net)))`.<br>
-    (b). Draw the predicted boxes;<br>
-    (c). Post-processing the network's output:<br>
-    The network outputs bounding boxes are each represented by a vector of number of classes + 5 elements. The first 4 elements represent the **center_x**, **center_y**, **width** and **height**. The fifth element represents the confidence that the bounding box encloses an object.
-4. Main loop:<br>
-      **blobFromImage** function scales the image pixel values to a target range of 0 to 1 using a scale factor of 1/255. It also resizes the image to the given size of (416, 416) without cropping. Keeping the swapRB parameter to its default value of 1.
-
-See github ReadMe for more step-by-step training details: <a href = "https://github.com/vince-CV/yolo-v3-object-detection">vince's github</a>
 
 
 
