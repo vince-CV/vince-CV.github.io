@@ -8,6 +8,11 @@ header-img: "img/home-bg.jpg"
 catalog: true
 tags:
     - OCR
+    - Tesseract
+    - EAST
+    - CRAFT
+    - Text Detection
+    - Text Recognition
     - Computer Vision 
     - Machine Learning
 ---
@@ -31,8 +36,8 @@ Realistic scenario: text in imagery<br>
 Tesseract -> text recognition (OCR) engine -> extract text from images. 
 **1.** Adaptive Thresholding<br>
 **2.** Page Layout Analysis: document -> segments<br>
-    a. connected component analysis, to get Blobs;<br>
-    b. from Blobs to get fixed-pitch/proportional texts.<br>
+  *a.* connected component analysis, to get Blobs;<br>
+  *b.* from Blobs to get fixed-pitch/proportional texts.<br>
 **3.** Word Recognize: Pass 1 & 2 (to gain high confidence)<br>
 **4.** Fix: X-Height, Fuzzy Space, Word Bigram<br>
 **5.** Output Text<br>
