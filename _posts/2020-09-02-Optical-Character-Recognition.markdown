@@ -36,8 +36,8 @@ Realistic scenario: text in imagery<br>
 Tesseract -> text recognition (OCR) engine -> extract text from images. 
 **1.** Adaptive Thresholding<br>
 **2.** Page Layout Analysis: document -> segments<br>
-  *a.* connected component analysis, to get Blobs;<br>
-  *b.* from Blobs to get fixed-pitch/proportional texts.<br>
+> *a.* connected component analysis, to get Blobs;<br>
+> *b.* from Blobs to get fixed-pitch/proportional texts.<br>
 **3.** Word Recognize: Pass 1 & 2 (to gain high confidence)<br>
 **4.** Fix: X-Height, Fuzzy Space, Word Bigram<br>
 **5.** Output Text<br>
@@ -75,15 +75,5 @@ From experiments, even though it is natural image, Tesseract is able to perform 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 ### EAST<br>
+**An Efficient and Accurate Scene Text Detector**, <a href="https://openaccess.thecvf.com/content_cvpr_2017/papers/Zhou_EAST_An_Efficient_CVPR_2017_paper.pdf">EAST</a>, is a very robust deep learning method and an OpenCV tool that detects text in natural scene images. Its pipeline directly predicts words or text lines of arbitrary orientations and quadrilateral shapes in full images, eliminating unnecessary intermediate steps (e.g., candidate aggregation and word partitioning)
