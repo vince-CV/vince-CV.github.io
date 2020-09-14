@@ -168,3 +168,30 @@ If there is real data that is being used and also know what is this text, or the
 So once the above automated technique produces the right number of bounding boxes, given a higher weight compared to those segmentation were incorrect. So they can use the real data also.<br>
 Semi-supervised learning: using synthetic data to train CNN which is the supervised part. But for the real part they use these tricks which is not supervised.<br>
 ![Image](/img/in-post/200903 OCR/6.png)
+
+####  **CRAFT Implementation**
+CRAFT model is carried by library Keras-OCR, which implemented Text Detection (**CRAFT-2019**) & Text Recognition (**<a href="https://arxiv.org/abs/1904.01941">CRNN-2017</a>**) pipeline. 
+
+**1. Install Keras-OCR Library:**<br>
+**`!pip install keras-ocr > /dev/null`**
+
+**2. Text Detector:**<br>
+
+```python
+import keras_ocr
+import cv2
+import glob
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+detector = keras_ocr.detection.Detector()
+
+image = keras_ocr.tools.read('https://upload.wikimedia.org/wikipedia/commons/e/e8/FseeG2QeLXo.jpg')
+detections = detector.detect(images=[image])[0]
+
+fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(10, 10))
+canvas = keras_ocr.tools.drawBoxes(image, detections)
+ax1.imshow(image)
+ax2.imshow(canvas)
+
+```
