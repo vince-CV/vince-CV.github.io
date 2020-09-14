@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "OCR Demo: Automatic Number Plate Recognitions"
-subtitle:   " \"OCR through Tesseract\""
+subtitle:   " \"Roubut OCR pipeline using CRAFT & Tesseract\""
 date:       2020-09-15 22:00:00
 author:     "vince"
 header-img: "img/home-bg.jpg"
@@ -35,13 +35,19 @@ Realistic scenario: text in imagery<br>
 ### Tesseract pipeline<br>
 Tesseract -> text recognition (OCR) engine -> extract text from images. 
 **1.** Adaptive Thresholding<br>
+
 **2.** Page Layout Analysis: document -> segments<br>
 > *a.* connected component analysis, to get Blobs;<br>
 > *b.* from Blobs to get fixed-pitch/proportional texts.<br>
+
 **3.** Word Recognize: Pass 1 & 2 (to gain high confidence)<br>
+
 **4.** Fix: X-Height, Fuzzy Space, Word Bigram<br>
+
 **5.** Output Text<br>
+
 ![Image](/img/in-post/200903 OCR/1.png)
+
 Tesseract is not always a pipeline, but a circle between 2 -> 4 -> 3 -> 5, or 4 -> 3 -> 5.
 
 #### Tesseract Experiments
@@ -79,10 +85,10 @@ From experiments, even though it is natural image, Tesseract is able to perform 
 **An Efficient and Accurate Scene Text Detector**, <a href="https://arxiv.org/abs/1704.03155v2">EAST</a>, is a very robust deep learning method and an OpenCV tool that detects text in natural scene images. Its pipeline directly predicts words or text lines of arbitrary orientations and quadrilateral shapes in full images, eliminating unnecessary intermediate steps (e.g., candidate aggregation and word partitioning).
 
 Two outputs of the EAST network:
-1. feature_fusion/concat_3 (detected text box)
-2. feature_fusion/Conv_7/Sigmoid (confidence score)
+**1.** feature_fusion/concat_3 (detected text box)
+**2.** feature_fusion/Conv_7/Sigmoid (confidence score)
 
-```pyrthon
+```python
 import cv2
 !pip install keras-ocr > /dev/null
 from keras_ocr.tools import warpBox
@@ -138,6 +144,7 @@ Before that question, let's look at the U-Net for semantic segmentation, and CRA
 ![Image](/img/in-post/200903 OCR/2.png)
 **1. Region score**
 Basically indicates that these locations have a character in them and thery are centered at this point of highest probability.
+
 **2. Affinity score**
 Calculates the affnity between characters, or say the two letters are close together if there is high affinity at this location or part of same word.
 
@@ -148,11 +155,13 @@ And the score generation module: warp a 2-D gaussain distribution based on the p
 
 **Problem**: large public datasets contain only word level segmentation!<br>
 **Solution**: Synthesize the text examples. <br>
+
 The authors used a semi-supervised approach:
 1. crop out the word-level text
 2. run through the network they trained on Synthetic data to get various region score
 3. use watershed to get a segments
 4. fit bounding boxes for segments (pseudo ground truth)
+
 but cannot trust this data completely. A clever solution:<br>
 If there is real data that is being used and also know what is this text, or the number of characters in this bounding box.<br>
 So once the above automated technique produces the right number of bounding boxes, given a higher weight compared to those segmentation were incorrect. So they can use the real data also.<br>
