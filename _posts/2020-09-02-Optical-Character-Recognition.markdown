@@ -18,12 +18,12 @@ tags:
 ---
 
 This blog is the notbook for OCR fundamental studies, which will include:
-1. Graphic Text Recognition: **Tesseract**, **Keras-OCR**
-2. Text Detection: **EAST**, **CRAFT** 
+**1.** Graphic Text Recognition: **Tesseract**, **Keras-OCR**
+**2.** Text Detection: **EAST**, **CRAFT** 
 
 Realistic scenario: text in imagery<br>
-1. Graphic text (scanned documents...)<br>
-2. Scene text (clothing, signs, packages...)<br>
+**1.** Graphic text (scanned documents...)<br>
+**2.** Scene text (clothing, signs, packages...)<br>
 
 ## OCR pipeline<br>
 1. Two-Step:<br> 
@@ -34,6 +34,7 @@ Realistic scenario: text in imagery<br>
 
 ### Tesseract pipeline<br>
 Tesseract -> text recognition (OCR) engine -> extract text from images. 
+
 **1.** Adaptive Thresholding<br>
 
 **2.** Page Layout Analysis: document -> segments<br>
