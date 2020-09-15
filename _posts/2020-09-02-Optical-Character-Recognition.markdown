@@ -195,3 +195,54 @@ ax1.imshow(image)
 ax2.imshow(canvas)
 
 ```
+
+
+### OCR pipeline with Tesseract and CRAFT Text Detection<br>
+
+```python
+import keras_ocr
+import pytesseract
+import cv2
+import glob
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+def tess_recognize_from_boxes(image, detections, config):
+  predictions = []
+  # for each box
+  for i, box in enumerate(detections):
+    # get the cropped and algned image
+    cropped_warped = keras_ocr.tools.warpBox(image, box)
+
+    # Perform tesseract OCR on the cropped Text
+    text = pytesseract.image_to_string(cropped_warped, config=config)
+    
+    # Store the text and the corresponding box 
+    if text:
+      predictions.append((text, box))
+  return predictions
+
+def modified_tesseract(image, config=('--psm 6')):
+  # Detect the Text boxes from the image using Keras-ocr
+  detections = detector.detect([image])[0]
+  
+  # Run tesseract on boxes defined above
+  predictions = tess_recognize_from_boxes(image, detections, config)
+
+  return predictions 
+
+def display_boxes(image, boxes):
+  img = keras_ocr.tools.drawBoxes(image.copy(),boxes)
+  plt.figure(figsize=[10,10])
+  plt.imshow(img)
+  plt.show()
+
+detector = keras_ocr.detection.Detector()
+
+image = keras_ocr.tools.read("dlbook.jpg")
+
+predictions = modified_tesseract(image)
+fig,ax = plt.subplots(figsize = [10,10])
+keras_ocr.tools.drawAnnotations(image, predictions, ax=ax)
+
+```
