@@ -246,3 +246,98 @@ fig,ax = plt.subplots(figsize = [10,10])
 keras_ocr.tools.drawAnnotations(image, predictions, ax=ax)
 
 ```
+
+### Text Recognition using CRNN<br>
+Text Detection is done using the CRAFT algorithm published in CVPR-2019 and Text Recognition is done using the CRNN algorithm which was published in TPAMI-2017.
+
+```python
+import keras_ocr
+import cv2
+import glob
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+image = keras_ocr.tools.read("dlbook.jpg")
+
+pipeline = keras_ocr.pipeline.Pipeline()
+
+prediction_groups = pipeline.recognize([image])
+
+predictions = prediction_groups[0]
+
+fig,ax = plt.subplots(figsize = [10,10])
+keras_ocr.tools.drawAnnotations(image, predictions, ax=ax)
+
+```
+
+### Comparing Tesseract vs CRNN based OCR
+
+```python
+import keras_ocr
+import pytesseract
+import cv2
+import glob
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+detector = keras_ocr.detection.Detector()
+
+def tess_recognize_from_boxes(image, detections, config):
+  predictions = []
+  # for each box
+  for i, box in enumerate(detections):
+    # get the cropped and algned image
+    cropped_warped = keras_ocr.tools.warpBox(image, box)
+
+    # Perform tesseract OCR on the cropped Text
+    text = pytesseract.image_to_string(cropped_warped, config=config)
+    
+    # Store the text and the corresponding box 
+    if text:
+      predictions.append((text, box))
+  return predictions
+
+def modified_tesseract(image, config=('--psm 6')):
+  # Detect the Text boxes from the image using Keras-ocr
+  detections = detector.detect([image])[0]
+  
+  # Run tesseract on boxes defined above
+  predictions = tess_recognize_from_boxes(image, detections, config)
+
+  return predictions
+
+pipeline = keras_ocr.pipeline.Pipeline(scale=1)
+
+def compare_ocr(filename,figsize=(20,8)):
+    # Load Image
+    image = keras_ocr.tools.read(filename)
+    image_tess = image.copy()
+    image_kerasocr = image.copy()
+
+    # Perform OCR
+    tesseract_predictions = modified_tesseract(image_tess)
+    kerasocr_predictions = pipeline.recognize([image_kerasocr])
+
+    # Create a figure with a set of subplots
+    fig,axs = plt.subplots(ncols=3,nrows=1, figsize = figsize)
+    axs[0].set_title("Tesseract OCR")
+    axs[2].set_title("Keras OCR")
+
+    # Display Tesseract Output
+    keras_ocr.tools.drawAnnotations(image_tess, tesseract_predictions,ax=axs[0])
+
+    # Add a divider
+    axs[1].imshow(np.zeros((image.shape[0],2)))
+    axs[1].set_yticks([])
+    axs[1].set_xticks([])
+
+    # Display keras ocr output
+    keras_ocr.tools.drawAnnotations(image_kerasocr, kerasocr_predictions[0],ax=axs[2])
+
+```
+
+### ROC Experience
+- For document OCR ( like Scans of resume/invoice/receipts ), try with Tesseract ( using scaling helps in most cases ). It might work even without text detection
+- For document OCR ( such as Books ) OCR preserves the order of text easily. If you use other methods, you need to handle that separately and might have to do some post-processing to get the text in the correct order.
+- For natural scene images ( such as traffic signs, hoardings and detecting random texts ) - it is better to perform text detection since the text might be a small part of the image and then use either tesseract or CRNN or other methods - You should arrive at a conclusion only after doing some experiments with your data.
