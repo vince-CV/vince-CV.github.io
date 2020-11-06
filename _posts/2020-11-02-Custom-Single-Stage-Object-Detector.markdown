@@ -12,15 +12,16 @@ tags:
     - Deep Learning
 ---
 
-It will follow the pipeline to create a custom single stage detector:
+The pipeline to create a custom single stage detector:
+
 **1.** Single-stage NN architecture
 ![Image](/img/in-post/201102 Detect/1.png)
 As the network pipeline, the feature extractor is going to be the combination of **ResNet-18** (pre-trained) and **FPN** (extract features from different layers). After that, two predictor: class predictor and bounding-box regressor.
 
-**2.** generate anchor-boxes
+**2.** generate anchor-boxes<br>
 Because of the feature extraction, the convolution feature of dimensions is: [num_channels, h, w]. The feature maps correspond to the position  [:,i,j] ∀ i & j, use to have different bounding boxes (of different sizes and aspect ratios assuming this position is the center of the bounding box) associated with it. This predefined bounding box is called an anchor.
 
-**3.** match prediction with ground truth
+**3.** match prediction with ground truth<br>
 Predicting bounding boxes and class for each bounding box for every feature map. Encoding Boxes and Decoding Boxes.
 
 **4.** loss function
@@ -38,6 +39,7 @@ FPN is built on top of ResNet (ResNet-18) in a fully convolutional fashion. It i
 - Bottom-up: forward path for feature-extracting.
 - Top-down: features closer to the input image have a rich segment (bounding box) information. So it is needed to merge all of the feature maps from different levels of the pyramid into one semantically-rich feature map.
 ![Image](/img/in-post/201102 Detect/3.png)
+
 The higher-level features are upsampled to be 2x larger. For this purpose, nearest neighbor upsampling is used. The larger feature map undergoes a 1x1 convolutional layer to reduce the channel dimension. Finally, these two feature maps are added together in element-wise manner. The process continues until the finest merged feature map is created.
 
 These merged features map goes into two different CNN of classes and bounding boxes predictions.
@@ -88,10 +90,10 @@ print('layer3_output size: {}'.format(layer3_output.size()))
 print('layer4_output size: {}'.format(layer4_output.size()))
 ```
 
-FPN will use `layer2_output`, `layer3_output`, `layer4_output` to get features from different convolution layers. And the output:
-`layer2_output size: torch.Size([2, 128, 32, 32])`
-`layer3_output size: torch.Size([2, 256, 16, 16])`
-`layer4_output size: torch.Size([2, 512, 8, 8])`
+FPN will use `layer2_output`, `layer3_output`, `layer4_output` to get features from different convolution layers. And the output:<br>
+`layer2_output size: torch.Size([2, 128, 32, 32])`<br>
+`layer3_output size: torch.Size([2, 256, 16, 16])`<br>
+`layer4_output size: torch.Size([2, 512, 8, 8])`<br>
 
 
 #### 2. FPN
@@ -199,12 +201,12 @@ output = fpn(image_inputs)
 for layer in output:
     print(layer.size())
 ```
-Note that all layers have the same number of channels (64), and width and height is half of the previous layer width and height.
-`torch.Size([2, 64, 32, 32])`
-`torch.Size([2, 64, 16, 16])`
-`torch.Size([2, 64, 8, 8])`
-`torch.Size([2, 64, 4, 4])`
-`torch.Size([2, 64, 2, 2])`
+Note that all layers have the same number of channels (64), and width and height is half of the previous layer width and height.<br>
+`torch.Size([2, 64, 32, 32])`<br>
+`torch.Size([2, 64, 16, 16])`<br>
+`torch.Size([2, 64, 8, 8])`<br>
+`torch.Size([2, 64, 4, 4])`<br>
+`torch.Size([2, 64, 2, 2])`<br>
 
 #### 3. Prediction Network
 
@@ -261,24 +263,24 @@ location_pred, class_pred = detector(image_inputs)
 print('location_pred size: {}'.format(location_pred.size()))
 print('class_pred size: {}'.format(class_pred.size()))
 ```
-The output is:
-`location_pred size: torch.Size([2, 12276, 4])`
-`class_pred size: torch.Size([2, 12276, 2])`
+The output is:<br>
+`location_pred size: torch.Size([2, 12276, 4])`<br>
+`class_pred size: torch.Size([2, 12276, 2])`<br>
 
-So what is `12276` represents?
+So what is `12276` represents?<br>
 Location predictor (loc_pred) in the detector using multiple convolutions to transform the output to the following:
 
-`torch.Size([2, 9*4, 32, 32])  # (batch_size, num_anchor*4 , H, W)`
-`torch.Size([2, 9*4, 16, 16])`
-`torch.Size([2, 9*4, 8, 8])`
-`torch.Size([2, 9*4, 4, 4])`
-`torch.Size([2, 9*4, 2, 2])`
+`torch.Size([2, 9*4, 32, 32])  # (batch_size, num_anchor*4 , H, W)`<br>
+`torch.Size([2, 9*4, 16, 16])`<br>
+`torch.Size([2, 9*4, 8, 8])`<br>
+`torch.Size([2, 9*4, 4, 4])`<br>
+`torch.Size([2, 9*4, 2, 2])`<br>
 
-(batch_size, number_of_anchor*4 , H, W) re-arranged as follows:
-(batch_size, num_anchor$\times$4 , H, W)-->(batch_size, H, W, num_anchor$\times$4)-->(batch_size, H$\times$W$\times$num_anchor, 4)
-num_anchor = 9
-So, $32\times32\times9 + 16\times16\times9 + 8\times8\times9 + 4\times4\times9 + 2\times2\times9 = 12276$.
-From the above re-arrangement, it is clear that each feature map of FPN (starting from (32, 32) and end in (2, 2)) has 9$\times$4 sized mapping.
+`(batch_size, number_of_anchor*4 , H, W)` re-arranged as follows:<br>
+`(batch_size, num_anchor*4 , H, W)`-->`(batch_size, H, W, num_anchor*4)`-->`(batch_size, H*W*num_anchor, 4)`<br>
+where `num_anchor = 9` <br>
+So, `32*32*9 + 16*16*9 + 8*8*9 + 4*4*9 + 2*2*9 = 12276`.`32*32*9`<br>
+From the above re-arrangement, it is clear that each feature map of FPN (starting from (32, 32) and end in (2, 2)) has `9*4` sized mapping.
 
 
 
