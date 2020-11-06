@@ -279,7 +279,7 @@ Location predictor (loc_pred) in the detector using multiple convolutions to tra
 `(batch_size, number_of_anchor*4 , H, W)` re-arranged as follows:<br>
 `(batch_size, num_anchor*4 , H, W)`-->`(batch_size, H, W, num_anchor*4)`-->`(batch_size, H*W*num_anchor, 4)`<br>
 where `num_anchor = 9` <br>
-So, `32*32*9 + 16*16*9 + 8*8*9 + 4*4*9 + 2*2*9 = 12276`.`32*32*9`<br>
+So, `32*32*9 + 16*16*9 + 8*8*9 + 4*4*9 + 2*2*9 = 12276`.<br>
 From the above re-arrangement, it is clear that each feature map of FPN (starting from (32, 32) and end in (2, 2)) has `9*4` sized mapping.
 
 
