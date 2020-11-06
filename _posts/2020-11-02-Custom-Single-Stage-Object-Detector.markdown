@@ -1,343 +1,298 @@
 ---
 layout:     post
-title:      "OCR Demo: Automatic Number Plate Recognitions"
-subtitle:   " \"Roubut OCR pipeline using CRAFT & Tesseract\""
-date:       2020-09-15 22:00:00
+title:      "Single Stage Object Detection"
+subtitle:   " \"Create a custom single-stage detector\""
+date:       2020-11-02 22:00:00
 author:     "vince"
 header-img: "img/home-bg.jpg"
 catalog: true
 tags:
-    - OCR
-    - Tesseract
-    - EAST
-    - CRAFT
-    - Text Detection
-    - Text Recognition
-    - Computer Vision 
-    - Machine Learning
+    - Object Detector
+    - Computer Vision
+    - Deep Learning
 ---
 
-This blog is the notbook for OCR fundamental studies, which will include:
-**1.** Graphic Text Recognition: **Tesseract**, **Keras-OCR**
-**2.** Text Detection: **EAST**, **CRAFT** 
+It will follow the pipeline to create a custom single stage detector:
+**1.** Single-stage NN architecture
+![Image](/img/in-post/201102 Detect/1.png)
+As the network pipeline, the feature extractor is going to be the combination of **ResNet-18** (pre-trained) and **FPN** (extract features from different layers). After that, two predictor: class predictor and bounding-box regressor.
 
-Realistic scenario: text in imagery<br>
-**1.** Graphic text (scanned documents...)<br>
-**2.** Scene text (clothing, signs, packages...)<br>
+**2.** generate anchor-boxes
+Because of the feature extraction, the convolution feature of dimensions is: [num_channels, h, w]. The feature maps correspond to the position  [:,i,j] ∀ i & j, use to have different bounding boxes (of different sizes and aspect ratios assuming this position is the center of the bounding box) associated with it. This predefined bounding box is called an anchor.
 
-## OCR pipeline<br>
-1. Two-Step:<br> 
-    a. text detection module that detects and ocalizes the existence of text; <br>
-    b. text recognition module that transcribes and converts the content of the detected text region into linguistic symbols.<br>
-2. End-to-End: 
-    single module with detection & recognition.<br>
+**3.** match prediction with ground truth
+Predicting bounding boxes and class for each bounding box for every feature map. Encoding Boxes and Decoding Boxes.
 
-### Tesseract pipeline<br>
-Tesseract -> text recognition (OCR) engine -> extract text from images. 
+**4.** loss function
 
-**1.** Adaptive Thresholding<br>
+**5.** training pipeline
 
-**2.** Page Layout Analysis: document -> segments<br>
-> *a.* connected component analysis, to get Blobs;<br>
-> *b.* from Blobs to get fixed-pitch/proportional texts.<br>
 
-**3.** Word Recognize: Pass 1 & 2 (to gain high confidence)<br>
 
-**4.** Fix: X-Height, Fuzzy Space, Word Bigram<br>
+## Detector NN achitecture<br>
+I will use the Feature Pyramid Network for feature extraction. On top of this, I used class subnet and box subnet to get classification and bounding box.
 
-**5.** Output Text<br>
+![Image](/img/in-post/201102 Detect/2.png)
+FPN is built on top of ResNet (ResNet-18) in a fully convolutional fashion. It includes two pathways: bottom-up & top-down. These two pathways are connected in-between with lateral connections.
 
-![Image](/img/in-post/200903 OCR/1.png)
+- Bottom-up: forward path for feature-extracting.
+- Top-down: features closer to the input image have a rich segment (bounding box) information. So it is needed to merge all of the feature maps from different levels of the pyramid into one semantically-rich feature map.
+![Image](/img/in-post/201102 Detect/3.png)
+The higher-level features are upsampled to be 2x larger. For this purpose, nearest neighbor upsampling is used. The larger feature map undergoes a 1x1 convolutional layer to reduce the channel dimension. Finally, these two feature maps are added together in element-wise manner. The process continues until the finest merged feature map is created.
 
-Tesseract is not always a pipeline, but a circle between 2 -> 4 -> 3 -> 5, or 4 -> 3 -> 5.
+These merged features map goes into two different CNN of classes and bounding boxes predictions.
 
-#### Tesseract Experiments
-**1. Install Tesseract Library:**<br>
-**`!apt install libtesseract-dev tesseract-ocr > /dev/null`**
 
-**2. Install Python wrapper for Tesseract:**<br>
-**`!pip install pytesseract > /dev/null`**
-
-**3. Perform OCR:**<br>
-
+#### 1.ResNet
 ```python
-import pytesseract
-text = pytesseract.image_to_string('text.jpg')
+import torch
+import inspect
+from torchvision import models
+from IPython.display import Code
+from fpn import FPN
+from detector import Detector
+
+resnet = models.resnet18(pretrained=True) 
 ```
 
-From experiments, even though it is natural image, Tesseract is able to perform OCR almost without any errors, but it will be surprised by how fast the output deteriorates on small changes in the images. Major reasons for failure of OCR using Tesseract and in general. They are:
-- **Cluttered Background**: The text might not be visibly clear or it might appear camouflaged with the background.
-- **Small Text**: The text might be too small to be detected. 
-- **Rotation or Perspective Distortion**: The text might be rotated in the image or the image itself might be distorted.
+The ResNet18 has the following blocks:
+1. `conv1`
+2. `bn1`
+3. `relu`
+4. `maxpool`
+5. `layer1`
+6. `layer2`
+7. `layer3`
+8. `layer4`
+9. `avgpool`
+10. `fc`
 
-
-#### Tesseract Functions
-- **`get_tesseract_version`** - Returns the Tesseract version installed in the system.
-- **`image_to_string`** - Returns the result of a Tesseract OCR run on the image as a single string
-- **`image_to_boxes`** - Returns the recognized characters and their box boundaries.
-- **`image_to_data`** - Returns the box boundaries/locations, confidences, words etc. 
-- **`image_to_osd`** - Returns result containing information about orientation and script detection.
-- **`image_to_pdf_or_hocr`** - Returns a searchable PDF from the input image.
-- **`run_and_get_output`** - Returns the raw output from Tesseract OCR. This gives a bit more control over the parameters that are sent to tesseract.
-
-
-
-### EAST<br>
-**An Efficient and Accurate Scene Text Detector**, <a href="https://arxiv.org/abs/1704.03155v2">EAST</a>, is a very robust deep learning method and an OpenCV tool that detects text in natural scene images. Its pipeline directly predicts words or text lines of arbitrary orientations and quadrilateral shapes in full images, eliminating unnecessary intermediate steps (e.g., candidate aggregation and word partitioning).
-
-Two outputs of the EAST network:
-**1.** feature_fusion/concat_3 (detected text box)
-**2.** feature_fusion/Conv_7/Sigmoid (confidence score)
+I used `1-8` blocks in FPG. But we take a look at the ouput dimension from these blocks:
 
 ```python
-import cv2
-!pip install keras-ocr > /dev/null
-from keras_ocr.tools import warpBox
+# btch_size = 2, image dimesion = 3 x 256 x 256 
 
-model = "frozen_east_text_detection.pb"
-net = cv2.dnn.readNet(model)
-outputLayers = []
-outputLayers.append("feature_fusion/Conv_7/Sigmoid")
-outputLayers.append("feature_fusion/concat_3")
-inpWidth = 640
-inpHeight = 640
-confThreshold = 0.7
-nmsThreshold = 0.4
+image_inputs = torch.rand((2, 3, 256, 256))
 
-image = cv2.imread(imageName)
+x = resnet.conv1(image_inputs)
+x = resnet.bn1(x)
+x = resnet.relu(x)
+x = resnet.maxpool(x)
+layer1_output = resnet.layer1(x)
+layer2_output = resnet.layer2(layer1_output)
+layer3_output = resnet.layer3(layer2_output)
+layer4_output = resnet.layer4(layer3_output)
 
-# Create a blob and assign the image to the blob
-blob = cv2.dnn.blobFromImage(image, 1.0, (inpWidth, inpHeight), (123.68, 116.78, 103.94), True, False)
-net.setInput(blob)
-
-# Get the output using by passing the image through the network
-output = net.forward(outputLayers)
-scores = output[0]
-geometry = output[1]
-
-# Get rotated rectangles using the decode function described above
-[boxes, confidences] = decode(scores, geometry, confThreshold)   # see more details in Github Repos
-indices = cv2.dnn.NMSBoxesRotated(boxes, confidences, confThreshold,nmsThreshold)
-...
-
+print('layer2_output size: {}'.format(layer2_output.size()))
+print('layer3_output size: {}'.format(layer3_output.size()))
+print('layer4_output size: {}'.format(layer4_output.size()))
 ```
 
+FPN will use `layer2_output`, `layer3_output`, `layer4_output` to get features from different convolution layers. And the output:
+`layer2_output size: torch.Size([2, 128, 32, 32])`
+`layer3_output size: torch.Size([2, 256, 16, 16])`
+`layer4_output size: torch.Size([2, 512, 8, 8])`
 
 
-### CRAFT<br>
-
-In terms of the recent works on scene text detection pipeline, (from CRAFT paper):
-![Image](/img/in-post/200903 OCR/5.png)
-
-**Character Region Awareness For Text Detection**, <a href="https://arxiv.org/abs/1904.01941">CRAFT</a>. The challenges associated with text detection, rather than regular object detection: huge aspect ratio variation, different fonts & backgrounds, skewed & curved text, and colored text.<br>
-Key idea in CRAFT: A word is a collection of letters -> Use the affinity between letters to detect words. The authors are repropose idea: **Text detection problem -> Segmeantation problem**
-
-The outputs of the CNN in CRAFT: 1. Region Score; 2. Affinity Score. (they are grey-scaled image, or can say a 2-channels image).
-
-If have the output label and input image, we can train a CNN; (input a image, output a mask). 
-So **how to generate the two maps for training data**?
-
-####  **1. Similarity to Segmentation problem**
-Before that question, let's look at the U-Net for semantic segmentation, and CRAFT use a very similiar network to solve this problem:
-![Image](/img/in-post/200903 OCR/3.png)
-
-####  **2. What's the two maps menas?**
-![Image](/img/in-post/200903 OCR/2.png)
-**1. Region score**
-Basically indicates that these locations have a character in them and thery are centered at this point of highest probability.
-
-**2. Affinity score**
-Calculates the affnity between characters, or say the two letters are close together if there is high affinity at this location or part of same word.
-
-####  **3. Generate Ground Truth**
-![Image](/img/in-post/200903 OCR/4.png)
-Suppose we've got the bounding boxs around the letter (**character boxes**), then the **affinity boxes** are generating as the figure above.<br>
-And the score generation module: warp a 2-D gaussain distribution based on the perspective transform between the boxes.<br>
-
-**Problem**: large public datasets contain only word level segmentation!<br>
-**Solution**: Synthesize the text examples. <br>
-
-The authors used a semi-supervised approach:
-1. crop out the word-level text
-2. run through the network they trained on Synthetic data to get various region score
-3. use watershed to get a segments
-4. fit bounding boxes for segments (pseudo ground truth)
-
-but cannot trust this data completely. A clever solution:<br>
-If there is real data that is being used and also know what is this text, or the number of characters in this bounding box.<br>
-So once the above automated technique produces the right number of bounding boxes, given a higher weight compared to those segmentation were incorrect. So they can use the real data also.<br>
-Semi-supervised learning: using synthetic data to train CNN which is the supervised part. But for the real part they use these tricks which is not supervised.<br>
-![Image](/img/in-post/200903 OCR/6.png)
-
-####  **CRAFT Implementation**
-CRAFT model is carried by library Keras-OCR, which implemented Text Detection (**CRAFT-2019**) & Text Recognition (**<a href="https://arxiv.org/abs/1904.01941">CRNN-2017</a>**) pipeline. 
-
-**1. Install Keras-OCR Library:**<br>
-**`!pip install keras-ocr > /dev/null`**
-
-**2. Text Detector:**<br>
+#### 2. FPN
+Codes that implement FPN: 
 
 ```python
-import keras_ocr
-import cv2
-import glob
-import matplotlib.pyplot as plt
-%matplotlib inline
+class FPN(nn.Module):
+    def __init__(self, block_expansion=1, backbone="resnet18"):
+        super().__init__()
+        assert hasattr(models, backbone), "Undefined encoder type"
+        
+        # load model 
+        self.feature_extractor = getattr(models, backbone)(pretrained=True)
+        
+        # two more layers conv6 and conv7 on the top of layer4 (if backbone is resnet18)
+        
+        self.conv6 = nn.Conv2d(
+            512 * block_expansion, 64 * block_expansion, kernel_size=3, stride=2, padding=1
+        )
+        self.conv7 = nn.Conv2d(
+            64 * block_expansion, 64 * block_expansion, kernel_size=3, stride=2, padding=1
+        )
 
-detector = keras_ocr.detection.Detector()
+        # lateral layers
+        
+        self.latlayer1 = nn.Conv2d(
+            512 * block_expansion, 64 * block_expansion, kernel_size=1, stride=1, padding=0
+        )
+        self.latlayer2 = nn.Conv2d(
+            256 * block_expansion, 64 * block_expansion, kernel_size=1, stride=1, padding=0
+        )
+        self.latlayer3 = nn.Conv2d(
+            128 * block_expansion, 64 * block_expansion, kernel_size=1, stride=1, padding=0
+        )
 
-image = keras_ocr.tools.read('https://upload.wikimedia.org/wikipedia/commons/e/e8/FseeG2QeLXo.jpg')
-detections = detector.detect(images=[image])[0]
+        # top-down layers
+        self.toplayer1 = nn.Conv2d(
+            64 * block_expansion, 64 * block_expansion, kernel_size=3, stride=1, padding=1
+        )
+        self.toplayer2 = nn.Conv2d(
+            64 * block_expansion, 64 * block_expansion, kernel_size=3, stride=1, padding=1
+        )
 
-fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(10, 10))
-canvas = keras_ocr.tools.drawBoxes(image, detections)
-ax1.imshow(image)
-ax2.imshow(canvas)
+    @staticmethod
+    def _upsample_add(x, y):
+        '''Upsample and add two feature maps.
 
-```
+        Args:
+          x: (Variable) top feature map to be upsampled.
+          y: (Variable) lateral feature map.
 
+        Returns:
+          (Variable) added feature map.
 
-### OCR pipeline with Tesseract and CRAFT Text Detection<br>
+        Note in PyTorch, when input size is odd, the upsampled feature map
+        with `F.interpolate(..., scale_factor=2, mode='nearest')`
+        maybe not equal to the lateral feature map size.
 
-```python
-import keras_ocr
-import pytesseract
-import cv2
-import glob
-import matplotlib.pyplot as plt
-%matplotlib inline
+        e.g.
+        original input size: [N,_,15,15] ->
+        conv2d feature map size: [N,_,8,8] ->
+        upsampled feature map size: [N,_,16,16]
 
-def tess_recognize_from_boxes(image, detections, config):
-  predictions = []
-  # for each box
-  for i, box in enumerate(detections):
-    # get the cropped and algned image
-    cropped_warped = keras_ocr.tools.warpBox(image, box)
+        So we choose bilinear upsample which supports arbitrary output sizes.
+        '''
+        _, _, height, width = y.size()
+        return F.interpolate(x, size=(height, width), mode='bilinear', align_corners=True) + y
 
-    # Perform tesseract OCR on the cropped Text
-    text = pytesseract.image_to_string(cropped_warped, config=config)
-    
-    # Store the text and the corresponding box 
-    if text:
-      predictions.append((text, box))
-  return predictions
+    def forward(self, x):
+        # bottom-up
+        x = self.feature_extractor.conv1(x)
+        x = self.feature_extractor.bn1(x)
+        x = self.feature_extractor.relu(x)
+        x = self.feature_extractor.maxpool(x)
+        layer1_output = self.feature_extractor.layer1(x)
+        layer2_output = self.feature_extractor.layer2(layer1_output)
+        layer3_output = self.feature_extractor.layer3(layer2_output)
+        layer4_output = self.feature_extractor.layer4(layer3_output)
 
-def modified_tesseract(image, config=('--psm 6')):
-  # Detect the Text boxes from the image using Keras-ocr
-  detections = detector.detect([image])[0]
-  
-  # Run tesseract on boxes defined above
-  predictions = tess_recognize_from_boxes(image, detections, config)
-
-  return predictions 
-
-def display_boxes(image, boxes):
-  img = keras_ocr.tools.drawBoxes(image.copy(),boxes)
-  plt.figure(figsize=[10,10])
-  plt.imshow(img)
-  plt.show()
-
-detector = keras_ocr.detection.Detector()
-
-image = keras_ocr.tools.read("dlbook.jpg")
-
-predictions = modified_tesseract(image)
-fig,ax = plt.subplots(figsize = [10,10])
-keras_ocr.tools.drawAnnotations(image, predictions, ax=ax)
+        output = []
+        
+        # conv6 output. input is output of layer4
+        embedding = self.conv6(layer4_output)
+        
+        # conv7 output. input is relu activation of conv6 output
+        output.append(self.conv7(F.relu(embedding)))
+        output.append(embedding)
+        
+        # top-down
+        output.append(self.latlayer1(layer4_output))
+        output.append(self.toplayer1(self._upsample_add(output[-1], self.latlayer2(layer3_output))))
+        output.append(self.toplayer2(self._upsample_add(output[-1], self.latlayer3(layer2_output))))
+        
+        return output[::-1]
 
 ```
 
-### Text Recognition using CRNN<br>
-Text Detection is done using the CRAFT algorithm published in CVPR-2019 and Text Recognition is done using the CRNN algorithm which was published in TPAMI-2017.
+Note that FPN has already added two more convolutional layers `conv6` and `conv7` on top of `layer4`.
 
 ```python
-import keras_ocr
-import cv2
-import glob
-import matplotlib.pyplot as plt
-%matplotlib inline
+fpn = FPN()
 
-image = keras_ocr.tools.read("dlbook.jpg")
+output = fpn(image_inputs)
 
-pipeline = keras_ocr.pipeline.Pipeline()
+for layer in output:
+    print(layer.size())
+```
+Note that all layers have the same number of channels (64), and width and height is half of the previous layer width and height.
+`torch.Size([2, 64, 32, 32])`
+`torch.Size([2, 64, 16, 16])`
+`torch.Size([2, 64, 8, 8])`
+`torch.Size([2, 64, 4, 4])`
+`torch.Size([2, 64, 2, 2])`
 
-prediction_groups = pipeline.recognize([image])
+#### 3. Prediction Network
 
-predictions = prediction_groups[0]
+USing `Detector` class that implements detector network.
 
-fig,ax = plt.subplots(figsize = [10,10])
-keras_ocr.tools.drawAnnotations(image, predictions, ax=ax)
+```python
+class Detector(nn.Module):
+    num_anchors = 9
+
+    def __init__(self, num_classes=2):
+        super(Detector, self).__init__()
+        self.fpn = FPN()
+        self.num_classes = num_classes
+        self.loc_head = self._make_head(self.num_anchors * 4)
+        self.cls_head = self._make_head(self.num_anchors * self.num_classes)
+
+    def forward(self, x):
+        fms = self.fpn(x)
+        loc_preds = []
+        cls_preds = []
+        for feature_map in fms:
+            loc_pred = self.loc_head(feature_map)
+            cls_pred = self.cls_head(feature_map)
+            loc_pred = loc_pred.permute(0, 2, 3, 1).contiguous().view(
+                x.size(0), -1, 4
+            )  # [N, 9*4,H,W] -> [N,H,W, 9*4] -> [N,H*W*9, 4]
+            cls_pred = cls_pred.permute(0, 2, 3, 1).contiguous().view(
+                x.size(0), -1, self.num_classes
+            )  # [N,9*20,H,W] -> [N,H,W,9*20] -> [N,H*W*9,20]
+            loc_preds.append(loc_pred)
+            cls_preds.append(cls_pred)
+            
+        
+        return torch.cat(loc_preds, 1), torch.cat(cls_preds, 1)
+
+    @staticmethod
+    def _make_head(out_planes):
+        layers = []
+        for _ in range(4):  # 4 layered convolution network
+            layers.append(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1))
+            layers.append(nn.ReLU(True))
+        layers.append(nn.Conv2d(64, out_planes, kernel_size=3, stride=1, padding=1))
+        return nn.Sequential(*layers)
 
 ```
 
-### Comparing Tesseract vs CRNN based OCR
+Note that the detector has two heads, one for class prediction and another for location prediction.
 
 ```python
-import keras_ocr
-import pytesseract
-import cv2
-import glob
-import numpy as np
-import matplotlib.pyplot as plt
-%matplotlib inline
+image_inputs = torch.rand((2, 3, 256, 256))
+detector = Detector()
+location_pred, class_pred = detector(image_inputs)
 
-detector = keras_ocr.detection.Detector()
-
-def tess_recognize_from_boxes(image, detections, config):
-  predictions = []
-  # for each box
-  for i, box in enumerate(detections):
-    # get the cropped and algned image
-    cropped_warped = keras_ocr.tools.warpBox(image, box)
-
-    # Perform tesseract OCR on the cropped Text
-    text = pytesseract.image_to_string(cropped_warped, config=config)
-    
-    # Store the text and the corresponding box 
-    if text:
-      predictions.append((text, box))
-  return predictions
-
-def modified_tesseract(image, config=('--psm 6')):
-  # Detect the Text boxes from the image using Keras-ocr
-  detections = detector.detect([image])[0]
-  
-  # Run tesseract on boxes defined above
-  predictions = tess_recognize_from_boxes(image, detections, config)
-
-  return predictions
-
-pipeline = keras_ocr.pipeline.Pipeline(scale=1)
-
-def compare_ocr(filename,figsize=(20,8)):
-    # Load Image
-    image = keras_ocr.tools.read(filename)
-    image_tess = image.copy()
-    image_kerasocr = image.copy()
-
-    # Perform OCR
-    tesseract_predictions = modified_tesseract(image_tess)
-    kerasocr_predictions = pipeline.recognize([image_kerasocr])
-
-    # Create a figure with a set of subplots
-    fig,axs = plt.subplots(ncols=3,nrows=1, figsize = figsize)
-    axs[0].set_title("Tesseract OCR")
-    axs[2].set_title("Keras OCR")
-
-    # Display Tesseract Output
-    keras_ocr.tools.drawAnnotations(image_tess, tesseract_predictions,ax=axs[0])
-
-    # Add a divider
-    axs[1].imshow(np.zeros((image.shape[0],2)))
-    axs[1].set_yticks([])
-    axs[1].set_xticks([])
-
-    # Display keras ocr output
-    keras_ocr.tools.drawAnnotations(image_kerasocr, kerasocr_predictions[0],ax=axs[2])
-
+print('location_pred size: {}'.format(location_pred.size()))
+print('class_pred size: {}'.format(class_pred.size()))
 ```
+The output is:
+`location_pred size: torch.Size([2, 12276, 4])`
+`class_pred size: torch.Size([2, 12276, 2])`
 
-### ROC Experience
-- For document OCR ( like Scans of resume/invoice/receipts ), try with Tesseract ( using scaling helps in most cases ). It might work even without text detection
-- For document OCR ( such as Books ) OCR preserves the order of text easily. If you use other methods, you need to handle that separately and might have to do some post-processing to get the text in the correct order.
-- For natural scene images ( such as traffic signs, hoardings and detecting random texts ) - it is better to perform text detection since the text might be a small part of the image and then use either tesseract or CRNN or other methods - You should arrive at a conclusion only after doing some experiments with your data.
+So what is `12276` represents?
+Location predictor (loc_pred) in the detector using multiple convolutions to transform the output to the following:
+
+`torch.Size([2, 9*4, 32, 32])  # (batch_size, num_anchor*4 , H, W)`
+`torch.Size([2, 9*4, 16, 16])`
+`torch.Size([2, 9*4, 8, 8])`
+`torch.Size([2, 9*4, 4, 4])`
+`torch.Size([2, 9*4, 2, 2])`
+
+(batch_size, number_of_anchor*4 , H, W) re-arranged as follows:
+(batch_size, num_anchor$\times$4 , H, W)-->(batch_size, H, W, num_anchor$\times$4)-->(batch_size, H$\times$W$\times$num_anchor, 4)
+num_anchor = 9
+So, $32\times32\times9 + 16\times16\times9 + 8\times8\times9 + 4\times4\times9 + 2\times2\times9 = 12276$.
+From the above re-arrangement, it is clear that each feature map of FPN (starting from (32, 32) and end in (2, 2)) has 9$\times$4 sized mapping.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
