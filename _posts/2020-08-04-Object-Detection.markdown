@@ -277,10 +277,10 @@ The YOLOv4 could consists of:
 > Head: YOLO v3<br>
 
 #### RetinaNet
-The RetinaNet is a one-stage dense object detector. Two crucial building blocks are **featurized image pyramid** and the use of **focal loss**.
+The RetinaNet is a one-stage dense object detector. Two crucial building blocks are **featurized image pyramid** (hierachical structure of converts to create feature maps) and the use of **focal loss**.
 
 **Focal loss**:
-One of the bottlenecks of object detection is an extreme imbalance between background that contains no object and foreground that holds objects of interests. Focal loss is designed to assign more weights on hard, easily misclassified examples (i.e. background with noisy texture or partial object) and to down-weight easy examples (i.e. obviously empty background).
+One of the bottlenecks of object detection is an extreme **class imbalance** between background that contains no object and foreground that holds objects of interests. Focal loss is designed to assign more weights on hard, easily misclassified examples (i.e. background with noisy texture or partial object) and to down-weight easy examples (i.e. obviously empty background).
 
 **Featurized Image Pyramid**:
 The featurized image pyramid (Lin et al., 2017) is the backbone network for RetinaNet. Following the same approach by image pyramid in SSD, featurized image pyramids provide a basic vision component for object detection at different scales.
