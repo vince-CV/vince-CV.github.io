@@ -462,3 +462,27 @@ Note that the classification choose threshold 0.5 to not consider all of the pre
 ```
 
 ## Loss Function<br>
+
+Object detector has 2 branches with 2 independent outputs. At each iterations, need to address: 1. how close are the predicted bounding boxes to the target bounding boxes, and 2. whether their labels are predicted correctly.<br>
+
+Hence, Loss function is represented as a sum of two losses: **localization** and **classification** loss.
+
+```python
+class DetectionLoss(nn.Module):
+    def __init__(self, num_classes=2):
+        super().__init__()
+        self.num_classes = num_classes
+
+    def forward(self, loc_preds, loc_targets, cls_preds, cls_targets):
+        '''Compute loss between (loc_preds, loc_targets) and (cls_preds, cls_targets).
+
+        Args:
+          loc_preds: (tensor) predicted locations, sized [batch_size, #anchors, 4].
+          loc_targets: (tensor) encoded target locations, sized [batch_size, #anchors, 4].
+          cls_preds: (tensor) predicted class confidences, sized [batch_size, #anchors, #classes].
+          cls_targets: (tensor) encoded target labels, sized [batch_size, #anchors].
+
+        loss:
+          (tensor) loss = SmoothL1Loss(loc_preds, loc_targets) + OHEMLoss(cls_preds, cls_targets).
+        '''
+```
