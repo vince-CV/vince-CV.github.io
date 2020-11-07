@@ -210,7 +210,7 @@ Note that all layers have the same number of channels (64), and width and height
 
 #### 3. Prediction Network
 
-USing `Detector` class that implements detector network.
+Using `Detector` class that implements detector network.
 
 ```python
 class Detector(nn.Module):
@@ -311,12 +311,12 @@ def __init__(self, input_size):
 
 ```
 
-As seen, it chose the anchor area which is responsible for generating anchors for the output layer of `FPN`.
-`256/8  = 32   # first is for generating achchors for 1st FPN output layer`
-`256/16 = 16`
-`.`
-`.`
-`256/128 = 2` 
+As seen, it chose the anchor area which is responsible for generating anchors for the output layer of `FPN`.<br>
+`256/8  = 32   # first is for generating achchors for 1st FPN output layer`<br>
+`256/16 = 16`<br>
+`.`<br>
+`.`<br>
+`256/128 = 2`<br> 
 To generate 9 anchors, using predefined ratios and scales.
 ```python
 def generate_anchors(anchor_area, aspect_ratios, scales):
@@ -368,6 +368,11 @@ So to compare the anchor boxes size with network output size:
         <tr><td><h3>(300, 300)</h3></td> <td><h3>[17451, 4]</h3></td> <td><h3>[batch_size, 17451, 4]</h3></td> </tr>
     </table>
 </div>
+| Image input size        | Anchor boxes size  | Detector Network output size|
+| :---------------------: | :----------------: | :-------------------------: |
+| (256, 256)              | [12276, 4]         | [batch_size, 12276, 4]      |
+| (300, 300)              | [17451, 4]         | [batch_size, 17451, 4]      |
+
 
 Basically, we want to encode the location target so that the **size of location target** becomes equal to the **size of anchor boxes**.
 
