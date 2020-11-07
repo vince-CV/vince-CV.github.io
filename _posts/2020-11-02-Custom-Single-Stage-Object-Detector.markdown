@@ -486,3 +486,329 @@ class DetectionLoss(nn.Module):
           (tensor) loss = SmoothL1Loss(loc_preds, loc_targets) + OHEMLoss(cls_preds, cls_targets).
         '''
 ```
+
+1. Localization loss
+
+As Faster R-CNN, **Smooth L1-loss** is a leveraged because it solved for bounding box regression problems of L2 loss, as sensitive to outliers.<br>
+
+Smooth L1-loss can be interpreted as a combination of L1-Loss (when the absolute value of the argument is high) and L2-Loss (when the absolute value of the argument is close to zer).
+
+```python
+    pos = cls_targets > 0  # [N,#anchors]
+    num_pos = pos.long().sum(1, keepdim=True)
+
+    mask = pos.unsqueeze(2).expand_as(loc_preds)  # [N,#anchors,4]
+    masked_loc_preds = loc_preds[mask].view(-1, 4)  # [#pos,4]
+    masked_loc_targets = loc_targets[mask].view(-1, 4)  # [#pos,4]
+    loc_loss = F.smooth_l1_loss(masked_loc_preds, masked_loc_targets, reduction='none')
+    loc_loss = loc_loss.sum() / num_pos.sum().float()
+
+```
+
+2. Classification loss
+
+As the most popular loss for classification task, **Cross Entropy** is leveraged. Note that **class imbalance** is a very problematic issue for single-stage detectors. This is because most locations in an image are negatives, that can be easily classified by the detector as background.<br>
+
+So I really want the network to train on hard examples with positives, which constitute only a small part of all of the locations. To address this problem, **Online Hard Example Mining (OHEM)** strategy appiled. It finds hard examples in the batch with the greatest loss values and back-propagates the loss computed over the selected instances. The amount of hard examples correlates with the number of positive examples and is often chosen as 3:1.
+
+```python
+# Compute max conf across batch for hard negative mining
+batch_size, _ = cls_targets.size()
+batch_conf = cls_preds.view(-1, self.num_classes)
+cls_loss = F.cross_entropy(batch_conf, cls_targets.view(-1), ignore_index=-1, reduction='none')
+cls_loss = cls_loss.view(batch_size, -1)
+
+# Hard Negative Mining
+# filter out pos boxes (pos = cls_targets > 0) for now.
+pos_cls_loss = cls_loss[pos]
+        
+# In OHEM, we have to select only those background labels (0) that have been failed with 
+# a very high margin (lets we will choose three times (negpos_ratio = 3) of the object labels (>=1)). 
+        
+# To paly around background labels, let's make zero loss to object labels.
+cls_loss[pos] = 0 
+        
+# Let's find indices of decreasing order of loss (which ground truth is background). 
+_, loss_idx = cls_loss.sort(1, descending=True)
+        
+# If we sort (in increasing order) the above indices, indices correspond to the sorting will 
+# give a ranking (along dimension 1) of the original loss matrix. 
+_, idx_rank = loss_idx.sort(1)
+        
+# Let's understand by example. As all operations are along axis 1, taking 1-d example will be sufficient.
+# cls_loss = [5, 2, 9, 6,  8]
+# _, loss_idx = cls_loss.sort(descending=True)
+# loss_idx = [2, 4, 3, 0, 1]
+
+# _, idx_rank = loss_idx.sort()
+# idx_rank = [3, 4, 0, 2, 1]
+        
+# Have a look, idx_rank has the ranking of cls_loss.
+negpos_ratio = 3
+        
+# We have decided we will take the negative class count three times of the positive class. 
+
+# If we do it blindly, in the case of not a positive class in the image, we will end up missing 
+# all the negative class also. So let's clamp minimum to 1. 
+# Although maximum clamping is not required here,  let fix to maximum index. 
+
+num_neg = torch.clamp(negpos_ratio * num_pos, min=1, max=pos.size(1) - 1)
+
+neg = idx_rank < num_neg.expand_as(idx_rank)
+neg_cls_loss = cls_loss[neg]
+
+cls_loss = (pos_cls_loss.sum() + neg_cls_loss.sum()) / num_pos.sum().float()
+       
+```
+
+
+## Training<br>
+```python
+%matplotlib notebook
+%load_ext autoreload
+%autoreload 2
+
+import os
+import random
+
+from operator import itemgetter
+
+import cv2
+import numpy as np
+import torch
+import torch.optim as optim
+import matplotlib.pyplot as plt
+
+from albumentations import (
+    CLAHE,
+    Blur,
+    OneOf,
+    Compose,
+    RGBShift,
+    GaussNoise,
+    RandomGamma,
+    RandomContrast,
+    RandomBrightness,
+)
+
+from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import MultiStepLR
+from albumentations.pytorch.transforms import ToTensorV2
+from albumentations.augmentations.transforms import HueSaturationValue
+from albumentations.augmentations.transforms import Normalize
+
+from trainer import Trainer, hooks, configuration
+from detector import Detector
+from trainer.utils import patch_configs
+from trainer.utils import setup_system
+from detection_loss import DetectionLoss
+from trainer.encoder import (
+    DataEncoder,
+    decode_boxes,
+    encode_boxes,
+    generate_anchors,
+    generate_anchor_grid,
+)
+from trainer.metrics import APEstimator
+from trainer.datasets import ListDataset
+from trainer.data_set_downloader import DataSetDownloader 
+from trainer.matplotlib_visualizer import MatplotlibVisualizer
+
+class Experiment:
+    def __init__(
+        self,
+        system_config: configuration.SystemConfig = configuration.SystemConfig(),
+        dataset_config: configuration.DatasetConfig = configuration.DatasetConfig(),  # pylint: disable=redefined-outer-name
+        dataloader_config: configuration.DataloaderConfig = configuration.DataloaderConfig(),  # pylint: disable=redefined-outer-name
+        optimizer_config: configuration.OptimizerConfig = configuration.OptimizerConfig(),  # pylint: disable=redefined-outer-name
+    ):
+        self.system_config = system_config
+        setup_system(system_config)
+        self.dataset_train = ListDataset(
+            root_dir=dataset_config.root_dir,
+            list_file='../train_anno.txt',
+            classes=["__background__", "person"],
+            mode='train',
+            transform=Compose(dataset_config.train_transforms),
+            input_size=300
+        )
+
+        self.loader_train = DataLoader(
+            dataset=self.dataset_train,
+            batch_size=dataloader_config.batch_size,
+            shuffle=True,
+            collate_fn=self.dataset_train.collate_fn,
+            num_workers=dataloader_config.num_workers,
+            pin_memory=True
+        )
+
+        self.dataset_test = ListDataset(
+            root_dir=dataset_config.root_dir,
+            list_file='../test_anno.txt',
+            classes=["__background__", "person"],
+            mode='val',
+            transform=Compose([Normalize(), ToTensorV2()]),
+            input_size=300
+        )
+        self.loader_test = DataLoader(
+            dataset=self.dataset_test,
+            batch_size=dataloader_config.batch_size,
+            shuffle=False,
+            collate_fn=self.dataset_test.collate_fn,
+            num_workers=dataloader_config.num_workers,
+            pin_memory=True
+        )
+        self.model = Detector(len(self.dataset_train.classes))
+        self.loss_fn = DetectionLoss(len(self.dataset_train.classes))
+        self.metric_fn = APEstimator(classes=self.dataset_test.classes)
+        self.optimizer = optim.SGD(
+            self.model.parameters(),
+            lr=optimizer_config.learning_rate,
+            weight_decay=optimizer_config.weight_decay,
+            momentum=optimizer_config.momentum
+        )
+        self.lr_scheduler = MultiStepLR(
+            self.optimizer, milestones=optimizer_config.lr_step_milestones, gamma=optimizer_config.lr_gamma
+        )
+        self.visualizer = MatplotlibVisualizer()
+
+    def run(self, trainer_config: configuration.TrainerConfig):
+        setup_system(self.system_config)
+        device = torch.device(trainer_config.device)
+        self.model = self.model.to(device)
+        self.loss_fn = self.loss_fn.to(device)
+
+        model_trainer = Trainer(
+            model=self.model,
+            loader_train=self.loader_train,
+            loader_test=self.loader_test,
+            loss_fn=self.loss_fn,
+            metric_fn=self.metric_fn,
+            optimizer=self.optimizer,
+            lr_scheduler=self.lr_scheduler,
+            device=device,
+            data_getter=itemgetter("image"),
+            target_getter=itemgetter("target"),
+            stage_progress=trainer_config.progress_bar,
+            get_key_metric=itemgetter("mAP"),
+            visualizer=self.visualizer,
+            model_save_best=trainer_config.model_save_best,
+            model_saving_frequency=trainer_config.model_saving_frequency,
+            save_dir=trainer_config.model_dir
+        )
+
+        model_trainer.register_hook("train", hooks.train_hook_detection)
+        model_trainer.register_hook("test", hooks.test_hook_detection)
+        model_trainer.register_hook("end_epoch", hooks.end_epoch_hook_detection)
+        self.metrics = model_trainer.fit(trainer_config.epoch_num)
+        return self.metrics
+
+    def draw_bboxes(self, rows, columns, trainer_config: configuration.TrainerConfig):
+        # load the best model
+        if trainer_config.model_save_best:
+            self.model.load_state_dict(
+                torch.
+                load(os.path.join(trainer_config.model_dir, self.model.__class__.__name__) + '_best.pth')
+            )
+        # or use the last saved
+        self.model = self.model.eval()
+
+        std = (0.229, 0.224, 0.225)
+        mean = (0.485, 0.456, 0.406)
+
+        std = torch.Tensor(std)
+        mean = torch.Tensor(mean)
+
+        fig, ax = plt.subplots(
+            nrows=rows, ncols=columns, figsize=(10, 10), gridspec_kw={
+                'wspace': 0,
+                'hspace': 0.05
+            }
+        )
+
+        for axi in ax.flat:
+            index = random.randrange(len(self.loader_test.dataset))
+
+            image, gt_boxes, _ = self.loader_test.dataset[index]
+
+            device = torch.device(trainer_config.device)
+            image = image.to(device).clone()
+
+            loc_preds, cls_preds = self.model(image.unsqueeze(0))
+
+            with torch.no_grad():
+                img = image.cpu()
+                img.mul_(std[:, None, None]).add_(mean[:, None, None])
+                img = torch.clamp(img, min=0.0, max=1.0)
+                img = img.numpy().transpose(1, 2, 0)
+
+                img = (img * 255.).astype(np.uint8)
+                gt_img = img.copy()
+                pred_img = img.copy()
+
+                for box in gt_boxes:
+                    gt_img = cv2.rectangle(
+                        gt_img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (255, 0, 0),
+                        thickness=2
+                    )
+
+                encoder = DataEncoder((img.shape[1], img.shape[0]))
+                samples = encoder.decode(loc_preds, cls_preds)
+                c_dets = samples[0][1]  # detections for class == 1
+
+                if c_dets.size > 0:
+                    boxes = c_dets[:, :4]
+                    for box in boxes:
+                        pred_img = cv2.rectangle(
+                            pred_img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 0, 255),
+                            thickness=2
+                        )
+
+                merged_img = np.concatenate((gt_img, pred_img), axis=1)
+                axi.imshow(merged_img)
+                axi.axis('off')
+        fig.show()
+
+
+if __name__ == '__main__':
+    dataloader_config, trainer_config = patch_configs(epoch_num_to_set=100, batch_size_to_set=30)
+    # Downloading dataset
+    DataSetDownloader(root_dir='data', dataset_title='PennFudanPed', download=True)
+    dataset_config = configuration.DatasetConfig(
+        root_dir="data/PennFudanPed/",
+        train_transforms=[
+            RandomBrightness(p=0.5),
+            RandomContrast(p=0.5),
+            OneOf([
+                RandomGamma(),
+                HueSaturationValue(hue_shift_limit=20, sat_shift_limit=50, val_shift_limit=50),
+                RGBShift()
+            ],
+                p=1),
+            OneOf([Blur(always_apply=True), GaussNoise(always_apply=True)], p=1),
+            CLAHE(),
+            Normalize(),
+            ToTensorV2()
+        ]
+    )
+    
+    optimizer_config = configuration.OptimizerConfig(
+        learning_rate=5e-3, 
+        lr_step_milestones=[50], 
+        lr_gamma=0.1, 
+        momentum=0.9, 
+        weight_decay=1e-5
+    )
+    
+    experiment = Experiment(
+        dataset_config=dataset_config, 
+        dataloader_config=dataloader_config, 
+        optimizer_config=optimizer_config
+    )
+    
+    # Run the experiment / start training
+    experiment.run(trainer_config)
+    
+    # how good our detector works by visualizing the results on the randomly chosen test images:
+    experiment.draw_bboxes(4, 1, trainer_config)
+```
