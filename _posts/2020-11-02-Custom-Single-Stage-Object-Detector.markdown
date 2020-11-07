@@ -288,7 +288,7 @@ From the above re-arrangement, it is clear that each feature map of FPN (startin
 ## Generating Anchor Box<br>
 
 In this custom network, there are **9** anchors for every feature map. One element of the feature map represents **segments of pixels** in the original image.
-![Image](/img/in-post/201102 Detect/2.png)
+![Image](/img/in-post/201102 Detect/4.png)
 The **9** anchor boxes: It have **3** aspect ratios of sizes 1/2, 1 and 2. For each size, there are 3 scales. These anchors of the appropriate sizes are generated for each of **5** **feature maps**.
 
 Let's take a look at the `DataEncoder` class, `DataEncoder.__init__`:
@@ -361,13 +361,7 @@ print('anchor_boxes size: {}'.format(data_encoder.anchor_boxes.size()))
 `anchor_boxes size: torch.Size([17451, 4])`<br>
 
 So to compare the anchor boxes size with network output size:
-<div>
-    <table>
-        <tr><td><h3>Image input size</h3></td> <td><h3>Anchor boxes size</h3></td> <td><h3>Detector Network output size</h3></td> </tr>
-        <tr><td><h3>(256, 256)</h3></td> <td><h3>[12276, 4]</h3></td> <td><h3>[batch_size, 12276, 4]</h3></td> </tr>
-        <tr><td><h3>(300, 300)</h3></td> <td><h3>[17451, 4]</h3></td> <td><h3>[batch_size, 17451, 4]</h3></td> </tr>
-    </table>
-</div>
+
 | Image input size        | Anchor boxes size  | Detector Network output size|
 | :---------------------: | :----------------: | :-------------------------: |
 | (256, 256)              | [12276, 4]         | [batch_size, 12276, 4]      |
@@ -377,3 +371,94 @@ So to compare the anchor boxes size with network output size:
 Basically, we want to encode the location target so that the **size of location target** becomes equal to the **size of anchor boxes**.
 
 
+## Matching Predictions with Ground Truth<br>
+
+After having a wide range of anchors, we want to know which of them are the most suitable for training. By computing the intersection over union (IoU) between anchors and target boxes, those boxes that will have the maximum metric will be used further in training.<br>
+If anchor box's IoU is in between 0.4 and 0.5, it can be considered as a bad match with the target and ignore it in the training process;<br>
+If anchor box's IoU is below 0.4, it can be considered as background;<br>
+After that, all of the matched boxes should be encoded.<br>
+
+```python
+def encode(self, boxes, classes):
+        iou = compute_iou(boxes, self.anchor_boxes)
+        iou, ids = iou.max(1)
+        loc_targets = encode_boxes(boxes[ids], self.anchor_boxes)
+        cls_targets = classes[ids]
+        cls_targets[iou < 0.5] = -1
+        cls_targets[iou < 0.4] = 0
+
+        return loc_targets, cls_targets
+```
+
+1. Encoding Boxes
+**Instead of predicting the bounding box location on the image directly, the bounding box regressor predicts the offset of the bounding box to anchor boxes**. Representing the bounding box with respect to anchor boxes requires encoding.<br>
+Generally a bounding box is presented in [𝑥𝑚𝑖𝑛,𝑦𝑚𝑖𝑛,𝑥𝑚𝑎𝑥,𝑦𝑚𝑎𝑥] format. However, at the time of learning these boxes, it learns the bounding boxes with **respect to nearby anchors**.<br>
+
+```python
+def encode_boxes(boxes, anchors):
+    anchors_wh = anchors[:, 2:] - anchors[:, :2] + 1  # width and height
+    anchors_ctr = anchors[:, :2] + 0.5 * anchors_wh   # center of the bounding box
+    boxes_wh = boxes[:, 2:] - boxes[:, :2] + 1
+    boxes_ctr = boxes[:, :2] + 0.5 * boxes_wh
+    return torch.cat([(boxes_ctr - anchors_ctr) / anchors_wh, torch.log(boxes_wh / anchors_wh)], 1)
+```
+
+**Precisely, it is encoded as follows:**
+- Difference between center co-ordinates of the nearby anchors and the ground truth bounding box, divided by the anchor width-height. `(boxes_ctr - anchors_ctr) / anchors_wh`<br>
+- Logs of width and height ratio. `torch.log(boxes_wh / anchors_wh)` <br>
+
+Training is trying to learn how to move the predicted box to look the same as the target. For that purpose, we should encode anchors as the offsets to the target bounding boxes which need to learn.<br>
+
+- The **offset** is calculated with respect to the center of the box and includes how the width and the height should be regressed.
+Concatenate along axis-1 by using `torch.cat([(boxes_ctr - anchors_ctr) / anchors_wh, torch.log(boxes_wh / anchors_wh)], 1)`. This is the encoded format of bounding boxes. <br>
+
+
+2. Decoding Boxes
+In order to obtain the boxes as standard format:
+```python
+def decode_boxes(deltas, anchors):
+    if torch.cuda.is_available():
+        anchors = anchors.cuda()
+    anchors_wh = anchors[:, 2:] - anchors[:, :2] + 1
+    anchors_ctr = anchors[:, :2] + 0.5 * anchors_wh
+    pred_ctr = deltas[:, :2] * anchors_wh + anchors_ctr
+    pred_wh = torch.exp(deltas[:, 2:]) * anchors_wh
+    return torch.cat([pred_ctr - 0.5 * pred_wh, pred_ctr + 0.5 * pred_wh - 1], 1)
+```
+
+Note that the classification choose threshold 0.5 to not consider all of the predictions with lower probabilities. Even after thresholding, some bounding boxes with similar box coordinates need to be suppressed. To remove this redundancy, vanilla non-maximum-suppression (NMS) should be applied.
+
+```python
+ def decode(self, loc_pred, cls_pred, cls_threshold=0.7, nms_threshold=0.3):
+        all_boxes = [[] for _ in range(len(loc_pred))]  # batch_size
+
+        for sample_id, (boxes, scores) in enumerate(zip(loc_pred, cls_pred)):
+            boxes = decode_boxes(boxes, self.anchor_boxes)
+
+            conf = scores.softmax(dim=1)
+            sample_boxes = [[] for _ in range(len(self.classes))]
+            for class_idx, class_name in enumerate(self.classes):
+                if class_name == '__background__':
+                    continue
+                class_conf = conf[:, class_idx]
+                ids = (class_conf > cls_threshold).nonzero().squeeze()
+                ids = [ids.tolist()]
+                keep = compute_nms(boxes[ids], class_conf[ids], threshold=nms_threshold)
+
+                conf_out, top_ids = torch.sort(class_conf[ids][keep], dim=0, descending=True)
+                boxes_out = boxes[ids][keep][top_ids]
+
+                boxes_out = boxes_out.cpu().numpy()
+                conf_out = conf_out.cpu().numpy()
+
+                c_dets = np.hstack((boxes_out, conf_out[:, np.newaxis])).astype(np.float32, copy=False)
+                c_dets = c_dets[c_dets[:, 4].argsort()]
+                sample_boxes[class_idx] = c_dets
+
+            all_boxes[sample_id] = sample_boxes
+
+        return all_boxes
+
+```
+
+## Loss Function<br>
