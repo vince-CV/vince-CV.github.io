@@ -285,16 +285,90 @@ From the above re-arrangement, it is clear that each feature map of FPN (startin
 
 
 
+## Generating Anchor Box<br>
 
+In this custom network, there are **9** anchors for every feature map. One element of the feature map represents **segments of pixels** in the original image.
+![Image](/img/in-post/201102 Detect/2.png)
+The **9** anchor boxes: It have **3** aspect ratios of sizes 1/2, 1 and 2. For each size, there are 3 scales. These anchors of the appropriate sizes are generated for each of **5** **feature maps**.
 
+Let's take a look at the `DataEncoder` class, `DataEncoder.__init__`:
 
+```python
+def __init__(self, input_size):
+        self.input_size = input_size
+        self.anchor_areas = [8 * 8, 16 * 16., 32 * 32., 64 * 64., 128 * 128]  # p3 -> p7
+        self.aspect_ratios = [0.5, 1, 2]
+        self.scales = [1, pow(2, 1 / 3.), pow(2, 2 / 3.)]
+        num_fms = len(self.anchor_areas)
+        fm_sizes = [math.ceil(self.input_size[0] / pow(2., i + 3)) for i in range(num_fms)]
+        self.anchor_boxes = []
+        for i, fm_size in enumerate(fm_sizes):
+            anchors = generate_anchors(self.anchor_areas[i], self.aspect_ratios, self.scales)
+            anchor_grid = generate_anchor_grid(input_size, fm_size, anchors)
+            self.anchor_boxes.append(anchor_grid)
+        self.anchor_boxes = torch.cat(self.anchor_boxes, 0)
+        self.classes = ["__background__", "person"]
 
+```
 
+As seen, it chose the anchor area which is responsible for generating anchors for the output layer of `FPN`.
+`256/8  = 32   # first is for generating achchors for 1st FPN output layer`
+`256/16 = 16`
+`.`
+`.`
+`256/128 = 2` 
+To generate 9 anchors, using predefined ratios and scales.
+```python
+def generate_anchors(anchor_area, aspect_ratios, scales):
+    anchors = []
+    for scale in scales:
+        for ratio in aspect_ratios:
+            h = math.sqrt(anchor_area/ratio)
+            w = math.sqrt(anchor_area*ratio)
+            x1 = (math.sqrt(anchor_area) - scale * w) * 0.5
+            y1 = (math.sqrt(anchor_area) - scale * h) * 0.5
+            x2 = (math.sqrt(anchor_area) + scale * w) * 0.5
+            y2 = (math.sqrt(anchor_area) + scale * h) * 0.5
+            anchors.append([x1, y1, x2, y2])
+    return torch.Tensor(anchors)
+```
+for each feature map, a grid will be created, which will allow all the possible box.
+```python
+def generate_anchor_grid(input_size, fm_size, anchors):
+    grid_size = input_size[0] / fm_size
+    x, y = torch.meshgrid(torch.arange(0, fm_size) * grid_size, torch.arange(0, fm_size) * grid_size)
+    anchors = anchors.view(-1, 1, 1, 4)
+    xyxy = torch.stack([x, y, x, y], 2).float()
+    boxes = (xyxy + anchors).permute(2, 1, 0, 3).contiguous().view(-1, 4)
+    boxes[:, 0::2] = boxes[:, 0::2].clamp(0, input_size[0])
+    boxes[:, 1::2] = boxes[:, 1::2].clamp(0, input_size[1])
+    return boxes
+```
 
+Next check the size of anchor boxes by input different image size:
+```python
+height_width = (256, 256)
+data_encoder = DataEncoder(height_width)
+print('anchor_boxes size: {}'.format(data_encoder.anchor_boxes.size()))
+```
+`anchor_boxes size: torch.Size([12276, 4])`<br>
 
+```python
+height_width = (300, 300)
+data_encoder = DataEncoder(height_width)
+print('anchor_boxes size: {}'.format(data_encoder.anchor_boxes.size()))
+```
+`anchor_boxes size: torch.Size([17451, 4])`<br>
 
+So to compare the anchor boxes size with network output size:
+<div>
+    <table>
+        <tr><td><h3>Image input size</h3></td> <td><h3>Anchor boxes size</h3></td> <td><h3>Detector Network output size</h3></td> </tr>
+        <tr><td><h3>(256, 256)</h3></td> <td><h3>[12276, 4]</h3></td> <td><h3>[batch_size, 12276, 4]</h3></td> </tr>
+        <tr><td><h3>(300, 300)</h3></td> <td><h3>[17451, 4]</h3></td> <td><h3>[batch_size, 17451, 4]</h3></td> </tr>
+    </table>
+</div>
 
-
-
+Basically, we want to encode the location target so that the **size of location target** becomes equal to the **size of anchor boxes**.
 
 
