@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Segmentation of CV"
+title:      "Semantic Segmentation"
 subtitle:   " \"Review of semantic & instance segmentation\""
 date:       2020-11-15 22:00:00
 author:     "vince"
